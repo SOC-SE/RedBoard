@@ -1,0 +1,204 @@
+{{ template "head.html" . }}
+{{ template "menu.html" . }}
+
+<main class="main-content" x-data="dashboard()" x-init="init()">
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Teams</h4>
+                <div class="stat-value" x-text="stats.teams">-</div>
+            </div>
+            <div class="stat-icon blue">📊</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Hosts</h4>
+                <div class="stat-value" x-text="stats.hosts">-</div>
+            </div>
+            <div class="stat-icon green">🖥️</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Open Ports</h4>
+                <div class="stat-value" x-text="stats.ports">-</div>
+            </div>
+            <div class="stat-icon yellow">🔓</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-content">
+                <h4>Dangerous Ports</h4>
+                <div class="stat-value" x-text="stats.dangerous">-</div>
+            </div>
+            <div class="stat-icon red">⚠️</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <h2>Network Overview</h2>
+        <div class="flex gap-2">
+            <span class="text-muted text-sm" x-show="lastUpdate">
+                Last updated: <span x-text="formatTime(lastUpdate)"></span>
+            </span>
+            <button class="btn btn-secondary btn-sm" @click="refresh()" :disabled="loading">
+                <span x-show="!loading">↻ Refresh</span>
+                <span x-show="loading" class="loading-spinner"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading && teams.length === 0" class="text-center" style="padding: 4rem;">
+        <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+        <p class="text-muted mt-3">Loading dashboard data...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && teams.length === 0" class="empty-state">
+        <div class="empty-state-icon">📡</div>
+        <h3>No Teams Configured</h3>
+        <p class="text-muted">Add teams to start monitoring network assets.</p>
+        {{if .roles | isAdmin}}
+        <a href="/teams.html" class="btn btn-primary mt-3">Add Team</a>
+        {{end}}
+    </div>
+
+    <!-- Teams Grid -->
+    <div class="teams-grid" x-show="teams.length > 0">
+        <template x-for="team in teams" :key="team.tid">
+            <div class="team-card">
+                <!-- Team Header -->
+                <div class="team-header">
+                    <div class="team-info">
+                        <div class="team-color" :style="'background:' + team.color"></div>
+                        <span class="team-name" x-text="team.name"></span>
+                    </div>
+                    <span class="team-range" x-text="team.iprange"></span>
+                </div>
+
+                <!-- Team Stats -->
+                <div class="team-stats">
+                    <div class="team-stat">
+                        <span class="count" x-text="team.hosts?.length || 0"></span>
+                        <span class="label">hosts</span>
+                    </div>
+                    <div class="team-stat">
+                        <span class="count" x-text="countPorts(team)"></span>
+                        <span class="label">ports</span>
+                    </div>
+                    <div class="team-stat">
+                        <span class="count" style="color: var(--accent-red);" x-text="countDangerousPorts(team)"></span>
+                        <span class="label">risky</span>
+                    </div>
+                </div>
+
+                <!-- Host List -->
+                <div class="host-list">
+                    <template x-if="!team.hosts || team.hosts.length === 0">
+                        <div class="empty-state" style="padding: 2rem;">
+                            <p class="text-muted text-sm">No hosts discovered yet</p>
+                        </div>
+                    </template>
+
+                    <template x-for="host in team.hosts" :key="host.ip">
+                        <div class="host-item">
+                            <div class="host-header">
+                                <div>
+                                    <div class="host-ip" x-text="host.ip"></div>
+                                    <div class="host-hostname" x-text="host.hostname || 'Unknown hostname'"></div>
+                                </div>
+                                <div class="host-status" :class="host.status || 'online'">
+                                    <span class="status-dot"></span>
+                                    <span x-text="host.status || 'online'"></span>
+                                </div>
+                            </div>
+                            <div class="port-grid">
+                                <template x-for="port in host.ports" :key="port.number">
+                                    <span 
+                                        class="port-badge" 
+                                        :class="{ 'dangerous': isDangerous(port.number) }"
+                                        :title="port.service || 'Unknown service'"
+                                        x-text="port.number + '/' + port.protocol"
+                                    ></span>
+                                </template>
+                                <template x-if="!host.ports || host.ports.length === 0">
+                                    <span class="text-muted text-sm">No open ports</span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+</main>
+
+<script>
+const DANGEROUS_PORTS = new Set([21,22,23,25,53,110,135,139,143,445,1433,1521,3306,3389,5432,5900,6379,8080,27017]);
+
+function dashboard() {
+    return {
+        teams: [],
+        stats: { teams: 0, hosts: 0, ports: 0, dangerous: 0 },
+        loading: true,
+        lastUpdate: null,
+        refreshInterval: null,
+
+        async init() {
+            await this.refresh();
+            // Auto-refresh every 30 seconds
+            this.refreshInterval = setInterval(() => this.refresh(), 30000);
+        },
+
+        async refresh() {
+            this.loading = true;
+            try {
+                const data = await API.get('{{ getAPIBaseURL }}/dashboard/data');
+                this.teams = data.teams || [];
+                this.stats = {
+                    teams: data.total_teams || 0,
+                    hosts: data.total_hosts || 0,
+                    ports: data.total_ports || 0,
+                    dangerous: data.dangerous_ports || 0
+                };
+                this.lastUpdate = new Date();
+            } catch (err) {
+                console.error('Failed to load dashboard:', err);
+                Toast.error('Failed to refresh dashboard');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        countPorts(team) {
+            if (!team.hosts) return 0;
+            return team.hosts.reduce((sum, host) => sum + (host.ports?.length || 0), 0);
+        },
+
+        countDangerousPorts(team) {
+            if (!team.hosts) return 0;
+            let count = 0;
+            team.hosts.forEach(host => {
+                if (host.ports) {
+                    host.ports.forEach(port => {
+                        if (DANGEROUS_PORTS.has(port.number)) count++;
+                    });
+                }
+            });
+            return count;
+        },
+
+        isDangerous(port) {
+            return DANGEROUS_PORTS.has(port);
+        },
+
+        formatTime(date) {
+            if (!date) return '';
+            return date.toLocaleTimeString();
+        }
+    };
+}
+</script>
+
+{{ template "footer.html" . }}

@@ -1,0 +1,219 @@
+{{ template "head.html" . }}
+{{ template "menu.html" . }}
+
+<main class="main-content" x-data="jobsPage()" x-init="init()">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <h2>Job Queue</h2>
+        <div class="flex gap-2">
+            <select class="form-input" style="width: auto;" x-model="filter" @change="loadJobs()">
+                <option value="">All Jobs</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="complete">Complete</option>
+                <option value="failed">Failed</option>
+            </select>
+            <button class="btn btn-secondary" @click="loadJobs()" :disabled="loading">
+                <span x-show="!loading">↻ Refresh</span>
+                <span x-show="loading" class="loading-spinner"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" style="margin-bottom: 1.5rem;">
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Total Jobs</h4>
+                <div class="stat-value" x-text="jobs.length">0</div>
+            </div>
+            <div class="stat-icon blue">📋</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Running</h4>
+                <div class="stat-value" x-text="jobs.filter(j => j.status === 'running').length">0</div>
+            </div>
+            <div class="stat-icon yellow">⏳</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Complete</h4>
+                <div class="stat-value" x-text="jobs.filter(j => j.status === 'complete').length">0</div>
+            </div>
+            <div class="stat-icon green">✓</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Failed</h4>
+                <div class="stat-value" x-text="jobs.filter(j => j.status === 'failed').length">0</div>
+            </div>
+            <div class="stat-icon red">✗</div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading && jobs.length === 0" class="text-center" style="padding: 4rem;">
+        <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && jobs.length === 0" class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <h3>No Jobs Found</h3>
+        <p class="text-muted">Jobs will appear here when scanners request work.</p>
+    </div>
+
+    <!-- Jobs Table -->
+    <div class="card" x-show="jobs.length > 0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Type</th>
+                        <th>Team</th>
+                        <th>IP Range</th>
+                        <th>Status</th>
+                        <th>Results</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="job in jobs" :key="job.jid">
+                        <tr>
+                            <td>
+                                <code class="font-mono text-sm" x-text="job.jid.substring(0, 8) + '...'"></code>
+                            </td>
+                            <td>
+                                <span class="badge badge-blue" x-text="job.type"></span>
+                            </td>
+                            <td x-text="job.team_name || '-'"></td>
+                            <td>
+                                <code class="font-mono text-sm" x-text="job.iprange"></code>
+                            </td>
+                            <td>
+                                <span class="badge" :class="getStatusClass(job.status)" x-text="job.status"></span>
+                            </td>
+                            <td>
+                                <span x-show="job.status === 'complete'">
+                                    <span x-text="job.hosts_found"></span> hosts,
+                                    <span x-text="job.ports_found"></span> ports
+                                </span>
+                                <span x-show="job.status !== 'complete'" class="text-muted">-</span>
+                            </td>
+                            <td class="text-muted text-sm" x-text="formatDate(job.created_at)"></td>
+                            <td>
+                                <button 
+                                    class="btn btn-danger btn-sm"
+                                    @click="cancelJob(job)"
+                                    x-show="job.status === 'queued' || job.status === 'running'"
+                                    :disabled="job.cancelling"
+                                >
+                                    <span x-show="!job.cancelling">Cancel</span>
+                                    <span x-show="job.cancelling" class="loading-spinner"></span>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Job Manager Status -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title">Job Manager Status</h3>
+        </div>
+        <div class="card-body">
+            <template x-for="manager in managers" :key="manager.Name">
+                <div class="flex items-center justify-between" style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-subtle);">
+                    <div>
+                        <strong x-text="manager.Name"></strong>
+                        <span class="text-muted text-sm">(Round-robin scheduler)</span>
+                    </div>
+                    <div class="text-sm">
+                        Current index: <code class="font-mono" x-text="manager.JobIndex"></code>
+                    </div>
+                </div>
+            </template>
+            <div x-show="managers.length === 0" class="text-muted">No job managers configured</div>
+        </div>
+    </div>
+</main>
+
+<script>
+function jobsPage() {
+    return {
+        jobs: [],
+        managers: [],
+        loading: true,
+        filter: '',
+        refreshInterval: null,
+
+        async init() {
+            await Promise.all([this.loadJobs(), this.loadManagers()]);
+            this.refreshInterval = setInterval(() => {
+                this.loadJobs();
+                this.loadManagers();
+            }, 10000);
+        },
+
+        async loadJobs() {
+            this.loading = true;
+            try {
+                let url = '{{ getAPIBaseURL }}/jobs?limit=100';
+                if (this.filter) url += `&status=${this.filter}`;
+                const jobs = await API.get(url);
+                this.jobs = jobs.map(j => ({ ...j, cancelling: false }));
+            } catch (err) {
+                Toast.error('Failed to load jobs');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadManagers() {
+            try {
+                this.managers = await API.get('{{ getAPIBaseURL }}/jobs/manager');
+            } catch (err) {
+                console.error('Failed to load managers:', err);
+            }
+        },
+
+        async cancelJob(job) {
+            job.cancelling = true;
+            try {
+                await API.post(`{{ getAPIBaseURL }}/jobs/${job.jid}/cancel`);
+                Toast.success('Job cancelled');
+                await this.loadJobs();
+            } catch (err) {
+                Toast.error(err.message || 'Failed to cancel job');
+            } finally {
+                job.cancelling = false;
+            }
+        },
+
+        getStatusClass(status) {
+            const classes = {
+                'queued': 'badge-blue',
+                'running': 'badge-yellow',
+                'complete': 'badge-green',
+                'failed': 'badge-red',
+                'cancelled': 'badge-purple'
+            };
+            return classes[status] || 'badge-blue';
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString();
+        }
+    };
+}
+</script>
+
+{{ template "footer.html" . }}

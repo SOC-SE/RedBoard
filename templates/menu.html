@@ -1,0 +1,41 @@
+<nav class="navbar">
+    <a href="/main.html" class="navbar-brand">
+        <div class="icon">⚡</div>
+        <span>NMAP Dashboard</span>
+    </a>
+    
+    <ul class="navbar-nav">
+        <li><a href="/main.html" class="nav-link" id="nav-dashboard">Dashboard</a></li>
+        {{if .roles | isAdmin}}
+        <li><a href="/teams.html" class="nav-link" id="nav-teams">Teams</a></li>
+        <li><a href="/jobs.html" class="nav-link" id="nav-jobs">Jobs</a></li>
+        <li><a href="/users.html" class="nav-link" id="nav-users">Users</a></li>
+        {{end}}
+        <li><a href="/swagger/index.html" class="nav-link" target="_blank">API</a></li>
+    </ul>
+    
+    <div class="navbar-user">
+        <div class="user-badge">
+            <div class="user-avatar">{{ slice .user 0 1 }}</div>
+            <span>{{ .user }}</span>
+        </div>
+        <a href="/logout.html" class="btn btn-secondary btn-sm">Logout</a>
+    </div>
+</nav>
+
+<script>
+// Highlight active nav link
+document.addEventListener('DOMContentLoaded', () => {
+    const path = window.location.pathname;
+    const navLinks = {
+        '/main.html': 'nav-dashboard',
+        '/teams.html': 'nav-teams',
+        '/jobs.html': 'nav-jobs',
+        '/users.html': 'nav-users',
+    };
+    const activeId = navLinks[path];
+    if (activeId) {
+        document.getElementById(activeId)?.classList.add('active');
+    }
+});
+</script>

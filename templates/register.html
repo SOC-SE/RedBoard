@@ -1,0 +1,120 @@
+{{ template "head.html" . }}
+
+<div class="login-container">
+    <div class="login-card" x-data="registerForm()">
+        <div class="login-header">
+            <div class="login-logo">⚡</div>
+            <h1>Create Account</h1>
+            <p>Register for dashboard access</p>
+        </div>
+
+        <div x-show="success" x-cloak class="alert alert-success mb-4">
+            <span>Registration successful! Your account is pending activation by an administrator.</span>
+        </div>
+
+        <div x-show="error" x-cloak class="alert alert-error mb-4">
+            <span x-text="error"></span>
+        </div>
+
+        <form @submit.prevent="submit" x-show="!success">
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="name" 
+                    class="form-input" 
+                    placeholder="Choose a username"
+                    x-model="username"
+                    minlength="3"
+                    maxlength="50"
+                    required
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="Create a password (min 8 characters)"
+                    x-model="password"
+                    minlength="8"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirm">Confirm Password</label>
+                <input 
+                    type="password" 
+                    id="confirm" 
+                    class="form-input" 
+                    placeholder="Confirm your password"
+                    x-model="confirm"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" :disabled="loading">
+                <span x-show="!loading">Create Account</span>
+                <span x-show="loading" class="loading-spinner"></span>
+            </button>
+        </form>
+
+        <p class="text-center text-muted text-sm mt-4">
+            Already have an account? <a href="/login.html" style="color: var(--accent-cyan);">Sign In</a>
+        </p>
+    </div>
+</div>
+
+<script>
+function registerForm() {
+    return {
+        username: '',
+        password: '',
+        confirm: '',
+        error: '',
+        success: false,
+        loading: false,
+
+        async submit() {
+            this.error = '';
+
+            if (this.password !== this.confirm) {
+                this.error = 'Passwords do not match';
+                return;
+            }
+
+            if (this.password.length < 8) {
+                this.error = 'Password must be at least 8 characters';
+                return;
+            }
+
+            this.loading = true;
+
+            try {
+                const response = await API.post('{{ getAPIBaseURL }}/auth/register', {
+                    name: this.username,
+                    password: this.password
+                });
+
+                if (response.status === 'success') {
+                    this.success = true;
+                } else {
+                    this.error = response.message || 'Registration failed';
+                }
+            } catch (err) {
+                this.error = err.message || 'Registration failed. Please try again.';
+            } finally {
+                this.loading = false;
+            }
+        }
+    };
+}
+</script>
+
+{{ template "footer.html" . }}

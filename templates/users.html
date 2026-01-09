@@ -1,0 +1,201 @@
+{{ template "head.html" . }}
+{{ template "menu.html" . }}
+
+<main class="main-content" x-data="usersPage()" x-init="loadUsers()">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <h2>User Management</h2>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center" style="padding: 4rem;">
+        <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card" x-show="!loading">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th style="width: 100px;">Active</th>
+                        <th style="width: 100px;">Admin</th>
+                        <th style="width: 100px;">Scanner</th>
+                        <th style="width: 100px;">Viewer</th>
+                        <th style="width: 180px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="user in users" :key="user.uid">
+                        <tr>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <div class="user-avatar" x-text="user.name.charAt(0).toUpperCase()"></div>
+                                    <strong x-text="user.name"></strong>
+                                    <span x-show="user.name === 'admin'" class="badge badge-purple">System</span>
+                                </div>
+                            </td>
+                            <td>
+                                <label class="toggle">
+                                    <input type="checkbox" 
+                                           x-model="user.active" 
+                                           @change="markModified(user)"
+                                           :disabled="user.name === 'admin'">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <label class="toggle">
+                                    <input type="checkbox" 
+                                           :checked="hasRole(user, 'admin')"
+                                           @change="toggleRole(user, 'admin')"
+                                           :disabled="user.name === 'admin'">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <label class="toggle">
+                                    <input type="checkbox" 
+                                           :checked="hasRole(user, 'scanner')"
+                                           @change="toggleRole(user, 'scanner')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <label class="toggle">
+                                    <input type="checkbox" 
+                                           :checked="hasRole(user, 'viewer')"
+                                           @change="toggleRole(user, 'viewer')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                    <button 
+                                        class="btn btn-primary btn-sm" 
+                                        @click="saveUser(user)"
+                                        :disabled="!user.modified || user.saving"
+                                        x-show="user.modified"
+                                    >
+                                        <span x-show="!user.saving">Save</span>
+                                        <span x-show="user.saving" class="loading-spinner"></span>
+                                    </button>
+                                    <button 
+                                        class="btn btn-danger btn-sm" 
+                                        @click="confirmDelete(user)"
+                                        :disabled="user.name === 'admin'"
+                                        x-show="user.name !== 'admin'"
+                                    >Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" :class="{ active: showDeleteModal }" id="delete-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Delete User</h3>
+                <button class="modal-close" @click="showDeleteModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong x-text="deletingUser?.name"></strong>?</p>
+                <p class="text-muted text-sm mt-2">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
+                <button class="btn btn-danger" @click="deleteUser()" :disabled="deleting">
+                    <span x-show="!deleting">Delete User</span>
+                    <span x-show="deleting" class="loading-spinner"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+function usersPage() {
+    return {
+        users: [],
+        loading: true,
+        showDeleteModal: false,
+        deletingUser: null,
+        deleting: false,
+
+        async loadUsers() {
+            this.loading = true;
+            try {
+                const users = await API.get('{{ getAPIBaseURL }}/auth/users');
+                this.users = users.map(u => ({ ...u, modified: false, saving: false }));
+            } catch (err) {
+                Toast.error('Failed to load users');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        hasRole(user, role) {
+            return user.roles && user.roles.includes(role);
+        },
+
+        toggleRole(user, role) {
+            if (!user.roles) user.roles = [];
+            
+            const index = user.roles.indexOf(role);
+            if (index === -1) {
+                user.roles.push(role);
+            } else {
+                user.roles.splice(index, 1);
+            }
+            
+            this.markModified(user);
+        },
+
+        markModified(user) {
+            user.modified = true;
+        },
+
+        async saveUser(user) {
+            user.saving = true;
+            try {
+                await API.put(`{{ getAPIBaseURL }}/auth/users/${user.uid}`, {
+                    active: user.active,
+                    roles: user.roles
+                });
+                user.modified = false;
+                Toast.success(`User ${user.name} updated`);
+            } catch (err) {
+                Toast.error(err.message || 'Failed to update user');
+            } finally {
+                user.saving = false;
+            }
+        },
+
+        confirmDelete(user) {
+            this.deletingUser = user;
+            this.showDeleteModal = true;
+        },
+
+        async deleteUser() {
+            this.deleting = true;
+            try {
+                await API.delete(`{{ getAPIBaseURL }}/auth/user/${this.deletingUser.uid}`);
+                Toast.success('User deleted successfully');
+                this.showDeleteModal = false;
+                await this.loadUsers();
+            } catch (err) {
+                Toast.error(err.message || 'Failed to delete user');
+            } finally {
+                this.deleting = false;
+            }
+        }
+    };
+}
+</script>
+
+{{ template "footer.html" . }}

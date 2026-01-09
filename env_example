@@ -1,0 +1,16 @@
+# NMAP Dashboard Configuration
+# Copy this file to .env and update the values
+
+# Required: Base URL for the application
+API_BASE_URL=http://localhost:8080
+
+# Optional: Port to run the server on (default: 8080)
+PORT=8080
+
+# Optional: Session secret (generate with: openssl rand -base64 32)
+# If not set, a random secret will be generated on startup
+# Note: Sessions will not persist across restarts without this
+SESSION_SECRET=
+
+# Optional: Set to 'release' for production
+GIN_MODE=debug

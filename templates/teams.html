@@ -1,0 +1,231 @@
+{{ template "head.html" . }}
+{{ template "menu.html" . }}
+
+<main class="main-content" x-data="teamsPage()" x-init="loadTeams()">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <h2>Team Management</h2>
+        <button class="btn btn-primary" @click="openCreateModal()">
+            + Add Team
+        </button>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center" style="padding: 4rem;">
+        <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && teams.length === 0" class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <h3>No Teams Yet</h3>
+        <p class="text-muted">Create your first team to start monitoring.</p>
+        <button class="btn btn-primary mt-3" @click="openCreateModal()">Create Team</button>
+    </div>
+
+    <!-- Teams Table -->
+    <div class="card" x-show="teams.length > 0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th>Name</th>
+                        <th>IP Range</th>
+                        <th>Description</th>
+                        <th>Hosts</th>
+                        <th style="width: 150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="team in teams" :key="team.tid">
+                        <tr>
+                            <td>
+                                <div class="team-color" :style="'background:' + team.color"></div>
+                            </td>
+                            <td>
+                                <strong x-text="team.name"></strong>
+                            </td>
+                            <td>
+                                <code class="font-mono text-sm" x-text="team.iprange"></code>
+                            </td>
+                            <td class="text-muted" x-text="team.description || '-'"></td>
+                            <td>
+                                <span class="badge badge-blue" x-text="team.hosts?.length || 0"></span>
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-secondary btn-sm" @click="openEditModal(team)">Edit</button>
+                                    <button class="btn btn-danger btn-sm" @click="confirmDelete(team)">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div class="modal-overlay" :class="{ active: showModal }" id="team-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" x-text="editingTeam ? 'Edit Team' : 'Create Team'"></h3>
+                <button class="modal-close" @click="closeModal()">&times;</button>
+            </div>
+            <form @submit.prevent="saveTeam()">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Team Name *</label>
+                        <input type="text" class="form-input" x-model="form.name" placeholder="e.g., Blue Team" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">IP Range *</label>
+                        <input type="text" class="form-input font-mono" x-model="form.iprange" placeholder="e.g., 192.168.1.0/24" required>
+                        <small class="text-muted">Supports CIDR notation, ranges (192.168.1.1-254), or comma-separated IPs</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-input" x-model="form.description" placeholder="Optional description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <div class="flex gap-2">
+                            <template x-for="color in colors" :key="color">
+                                <button 
+                                    type="button"
+                                    class="btn-icon"
+                                    :style="'background:' + color + '; border: 2px solid ' + (form.color === color ? 'white' : 'transparent') + '; border-radius: 50%;'"
+                                    @click="form.color = color"
+                                ></button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" :disabled="saving">
+                        <span x-show="!saving" x-text="editingTeam ? 'Save Changes' : 'Create Team'"></span>
+                        <span x-show="saving" class="loading-spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" :class="{ active: showDeleteModal }" id="delete-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Delete Team</h3>
+                <button class="modal-close" @click="showDeleteModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong x-text="deletingTeam?.name"></strong>?</p>
+                <p class="text-muted text-sm mt-2">This will also delete all associated hosts and scan history. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
+                <button class="btn btn-danger" @click="deleteTeam()" :disabled="deleting">
+                    <span x-show="!deleting">Delete Team</span>
+                    <span x-show="deleting" class="loading-spinner"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+function teamsPage() {
+    return {
+        teams: [],
+        loading: true,
+        showModal: false,
+        showDeleteModal: false,
+        editingTeam: null,
+        deletingTeam: null,
+        saving: false,
+        deleting: false,
+        colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
+        form: {
+            name: '',
+            iprange: '',
+            description: '',
+            color: '#3B82F6'
+        },
+
+        async loadTeams() {
+            this.loading = true;
+            try {
+                this.teams = await API.get('{{ getAPIBaseURL }}/teams?include_hosts=true');
+            } catch (err) {
+                Toast.error('Failed to load teams');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        openCreateModal() {
+            this.editingTeam = null;
+            this.form = { name: '', iprange: '', description: '', color: '#3B82F6' };
+            this.showModal = true;
+        },
+
+        openEditModal(team) {
+            this.editingTeam = team;
+            this.form = {
+                name: team.name,
+                iprange: team.iprange,
+                description: team.description || '',
+                color: team.color || '#3B82F6'
+            };
+            this.showModal = true;
+        },
+
+        closeModal() {
+            this.showModal = false;
+            this.editingTeam = null;
+        },
+
+        async saveTeam() {
+            this.saving = true;
+            try {
+                if (this.editingTeam) {
+                    await API.put(`{{ getAPIBaseURL }}/teams/${this.editingTeam.tid}`, this.form);
+                    Toast.success('Team updated successfully');
+                } else {
+                    await API.post('{{ getAPIBaseURL }}/teams', this.form);
+                    Toast.success('Team created successfully');
+                }
+                this.closeModal();
+                await this.loadTeams();
+            } catch (err) {
+                Toast.error(err.message || 'Failed to save team');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        confirmDelete(team) {
+            this.deletingTeam = team;
+            this.showDeleteModal = true;
+        },
+
+        async deleteTeam() {
+            this.deleting = true;
+            try {
+                await API.delete(`{{ getAPIBaseURL }}/teams/${this.deletingTeam.tid}`);
+                Toast.success('Team deleted successfully');
+                this.showDeleteModal = false;
+                await this.loadTeams();
+            } catch (err) {
+                Toast.error(err.message || 'Failed to delete team');
+            } finally {
+                this.deleting = false;
+            }
+        }
+    };
+}
+</script>
+
+{{ template "footer.html" . }}

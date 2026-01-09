@@ -1,0 +1,82 @@
+package models
+
+import (
+	"database/sql/driver"
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+type Roles []string
+
+type User struct {
+	gorm.Model   `json:"-"`
+	Name         string `json:"name" gorm:"uniqueIndex"`
+	PasswordHash string `json:"-"`
+	Active       bool   `json:"active"`
+	Roles        Roles  `json:"roles" gorm:"type:VARCHAR(255)"`
+	UID          string `json:"uid" gorm:"uniqueIndex"`
+}
+
+type UserReq struct {
+	Active bool     `json:"active"`
+	Roles  []string `json:"roles"`
+}
+
+func MakeUser(name string) User {
+	var user User
+	user.Name = name
+	user.Active = false
+	user.UID = uuid.New().String()
+	user.Roles = append(user.Roles, "viewer")
+	return user
+}
+
+func (u *User) SetPassword(pw string) {
+	bytes, hasherr := bcrypt.GenerateFromPassword([]byte(pw), 14)
+	if hasherr != nil {
+		panic("unable to hash password")
+	}
+	u.PasswordHash = string(bytes)
+}
+
+func (u *User) CheckPassword(pw string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(pw))
+	return err == nil
+}
+
+func (u *User) HasRole(role string) bool {
+	for _, r := range u.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Roles) Scan(src any) error {
+	var data []byte
+	switch v := src.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	case nil:
+		return nil
+	default:
+		return fmt.Errorf("unsupported type: %T", src)
+	}
+
+	*r = strings.Split(string(data), ",")
+	return nil
+}
+
+func (r Roles) Value() (driver.Value, error) {
+	if len(r) == 0 {
+		return nil, nil
+	}
+	return strings.Join(r, ","), nil
+}

@@ -120,6 +120,15 @@ func (j JobController) UploadScan(c *gin.Context) {
 		return
 	}
 
+	// Debug logging
+	totalScriptsInRequest := 0
+	for _, h := range scan.Hosts {
+		for _, p := range h.Ports {
+			totalScriptsInRequest += len(p.Scripts)
+		}
+	}
+	fmt.Printf("[DEBUG] Received scan: %d hosts, scripts in request: %d\n", len(scan.Hosts), totalScriptsInRequest)
+
 	db := models.GetDB()
 	jid := c.Param("jid")
 
@@ -151,6 +160,7 @@ func (j JobController) UploadScan(c *gin.Context) {
 
 	hostsProcessed := 0
 	portsProcessed := 0
+	scriptsProcessed := 0
 
 	for _, scanHost := range scan.Hosts {
 		var host *models.Host
@@ -163,7 +173,7 @@ func (j JobController) UploadScan(c *gin.Context) {
 			host.LastSeen = time.Now()
 			host.Status = "online"
 
-			// Delete old ports and add new ones
+			// Delete old ports (and their scripts via CASCADE) and add new ones
 			tx.Where("host_id = ?", host.ID).Delete(&models.Port{})
 		} else {
 			// Create new host
@@ -184,20 +194,37 @@ func (j JobController) UploadScan(c *gin.Context) {
 		}
 
 		// Add ports
-		for _, port := range scanHost.Ports {
-			port.HostID = host.ID
-			if err := tx.Create(&port).Error; err != nil {
+		for _, scanPort := range scanHost.Ports {
+			// Create port model from scan data
+			dbPort := models.Port{
+				Number:   scanPort.Number,
+				State:    scanPort.State,
+				Protocol: scanPort.Protocol,
+				Service:  scanPort.Service,
+				Version:  scanPort.Version,
+				HostID:   host.ID,
+			}
+			
+			if err := tx.Create(&dbPort).Error; err != nil {
 				tx.Rollback()
 				c.IndentedJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 				return
 			}
 			
 			// Save script results if present
-			for i := range port.Scripts {
-				port.Scripts[i].PortID = port.ID
-				if err := tx.Create(&port.Scripts[i]).Error; err != nil {
-					// Log but don't fail on script save errors
-					fmt.Printf("Warning: failed to save script result: %v\n", err)
+			for _, scanScript := range scanPort.Scripts {
+				if scanScript.Name != "" && scanScript.Output != "" {
+					dbScript := models.ScriptResult{
+						PortID: dbPort.ID,
+						Name:   scanScript.Name,
+						Output: scanScript.Output,
+					}
+					if err := tx.Create(&dbScript).Error; err != nil {
+						// Log but don't fail on script save errors
+						fmt.Printf("Warning: failed to save script result for %s: %v\n", scanScript.Name, err)
+					} else {
+						scriptsProcessed++
+					}
 				}
 			}
 			
@@ -242,9 +269,10 @@ func (j JobController) UploadScan(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, gin.H{
-		"status":          "success",
-		"hosts_processed": hostsProcessed,
-		"ports_processed": portsProcessed,
+		"status":            "success",
+		"hosts_processed":   hostsProcessed,
+		"ports_processed":   portsProcessed,
+		"scripts_processed": scriptsProcessed,
 	})
 }
 

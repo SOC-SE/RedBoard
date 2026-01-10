@@ -139,8 +139,41 @@ func (h HostController) GetVulnerabilities(c *gin.Context) {
 
 	var findings []VulnFinding
 
-	// Keywords that indicate vulnerabilities
-	vulnKeywords := []string{"vulnerable", "anonymous", "empty password", "authentication disabled", "no authentication", "unrestricted"}
+	// Keywords that indicate vulnerabilities - expanded list
+	criticalKeywords := []string{
+		"vulnerable", "exploitable", "backdoor", "rce", "remote code execution",
+		"cve-2017-0144", "ms17-010", "eternalblue", "wannacry",
+		"cve-2014-6271", "shellshock",
+		"cve-2014-0160", "heartbleed",
+		"ms08-067", "conficker",
+		"ms12-020", "cve-2019-0708", "bluekeep",
+		"sambacry", "cve-2017-7494",
+		"doublepulsar",
+		"proftpd backdoor", "vsftpd backdoor",
+	}
+	
+	highKeywords := []string{
+		"anonymous", "empty password", "no password", "null password",
+		"authentication disabled", "no authentication", "auth bypass",
+		"default credentials", "default password",
+		"open relay", "allows relay",
+		"zone transfer", "axfr",
+		"unrestricted", "world readable", "world writable",
+		"directory listing", "directory traversal",
+		"sql injection", "sqli",
+		"weak cipher", "weak ssl", "sslv2", "sslv3",
+		"plaintext", "cleartext",
+		"root access", "admin access",
+	}
+	
+	mediumKeywords := []string{
+		"deprecated", "obsolete", "outdated",
+		"information disclosure", "info leak",
+		"enumeration", "enum",
+		"ntlm", "smb signing",
+		"recursion", "recursive queries",
+		"debug", "test", "development",
+	}
 	
 	for _, team := range teams {
 		for _, host := range team.Hosts {
@@ -148,29 +181,64 @@ func (h HostController) GetVulnerabilities(c *gin.Context) {
 				// Check script results for vulnerability indicators
 				for _, script := range port.Scripts {
 					outputLower := strings.ToLower(script.Output)
-					for _, keyword := range vulnKeywords {
-						if strings.Contains(outputLower, keyword) {
-							severity := "medium"
-							if strings.Contains(outputLower, "vulnerable") {
-								severity = "critical"
-							} else if strings.Contains(outputLower, "anonymous") || strings.Contains(outputLower, "empty password") {
-								severity = "high"
-							}
-							
-							findings = append(findings, VulnFinding{
-								TeamName:   team.Name,
-								TeamID:     team.TID,
-								HostIP:     host.IP,
-								Hostname:   host.Hostname,
-								Port:       port.Number,
-								Protocol:   port.Protocol,
-								Service:    port.Service,
-								ScriptName: script.Name,
-								Output:     script.Output,
-								Severity:   severity,
-							})
-							break // Only add once per script
+					scriptLower := strings.ToLower(script.Name)
+					
+					// Skip empty or very short outputs
+					if len(strings.TrimSpace(script.Output)) < 5 {
+						continue
+					}
+					
+					// Check for CVE patterns
+					hasCVE := strings.Contains(outputLower, "cve-") || strings.Contains(scriptLower, "vuln")
+					
+					severity := ""
+					
+					// Check critical keywords first
+					for _, keyword := range criticalKeywords {
+						if strings.Contains(outputLower, keyword) || strings.Contains(scriptLower, keyword) {
+							severity = "critical"
+							break
 						}
+					}
+					
+					// Check high keywords
+					if severity == "" {
+						for _, keyword := range highKeywords {
+							if strings.Contains(outputLower, keyword) {
+								severity = "high"
+								break
+							}
+						}
+					}
+					
+					// Check medium keywords
+					if severity == "" {
+						for _, keyword := range mediumKeywords {
+							if strings.Contains(outputLower, keyword) {
+								severity = "medium"
+								break
+							}
+						}
+					}
+					
+					// If script name contains "vuln" and has output, it's probably a finding
+					if severity == "" && hasCVE {
+						severity = "high"
+					}
+					
+					if severity != "" {
+						findings = append(findings, VulnFinding{
+							TeamName:   team.Name,
+							TeamID:     team.TID,
+							HostIP:     host.IP,
+							Hostname:   host.Hostname,
+							Port:       port.Number,
+							Protocol:   port.Protocol,
+							Service:    port.Service,
+							ScriptName: script.Name,
+							Output:     script.Output,
+							Severity:   severity,
+						})
 					}
 				}
 			}

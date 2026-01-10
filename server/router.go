@@ -73,6 +73,8 @@ func NewRouter() *gin.Engine {
 	router.GET("/auth/users", middleware.Authorize("admin"), auth.ListUsers)
 	router.PUT("/auth/users/:uid", middleware.Authorize("admin"), auth.UpdateUser)
 	router.DELETE("/auth/user/:uid", middleware.Authorize("admin"), auth.DeleteUser)
+	router.POST("/auth/admin/create-user", middleware.Authorize("admin"), auth.AdminCreateUser)
+	router.PUT("/auth/admin/reset-password/:uid", middleware.Authorize("admin"), auth.AdminResetPassword)
 
 	// Team endpoints
 	team := new(controllers.TeamController)

@@ -243,3 +243,93 @@ func (a AuthController) DeleteUser(c *gin.Context) {
 
 	c.IndentedJSON(http.StatusOK, gin.H{"status": "success", "message": "user deleted"})
 }
+
+// AdminCreateUser godoc
+// @Summary Create user (admin)
+// @Description Create a new user with specified roles (admin only)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param user body object true "User data with name, password, roles, active"
+// @Success 201 {object} map[string]string
+// @Router /auth/admin/create-user [post]
+func (a AuthController) AdminCreateUser(c *gin.Context) {
+	var req struct {
+		Name     string   `json:"name" binding:"required,min=3"`
+		Password string   `json:"password" binding:"required,min=8"`
+		Roles    []string `json:"roles"`
+		Active   bool     `json:"active"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	db := models.GetDB()
+
+	// Check if user exists
+	var existing models.User
+	result := db.First(&existing, "name = ?", req.Name)
+	if result.Error == nil {
+		c.IndentedJSON(http.StatusConflict, gin.H{"status": "error", "message": "username already exists"})
+		return
+	}
+
+	newUser := models.MakeUser(req.Name)
+	newUser.SetPassword(req.Password)
+	newUser.Active = req.Active
+	if len(req.Roles) > 0 {
+		newUser.Roles = req.Roles
+	}
+
+	result = db.Create(&newUser)
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": result.Error.Error()})
+		return
+	}
+
+	c.IndentedJSON(http.StatusCreated, gin.H{"status": "success", "message": "user created", "uid": newUser.UID})
+}
+
+// AdminResetPassword godoc
+// @Summary Reset user password (admin)
+// @Description Reset a user's password (admin only)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param uid path string true "User ID"
+// @Param password body object true "New password"
+// @Success 200 {object} map[string]string
+// @Router /auth/admin/reset-password/{uid} [put]
+func (a AuthController) AdminResetPassword(c *gin.Context) {
+	var req struct {
+		Password string `json:"password" binding:"required,min=8"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	db := models.GetDB()
+	var user models.User
+	result := db.First(&user, "uid = ?", c.Param("uid"))
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"status": "error", "message": "user not found"})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": result.Error.Error()})
+		return
+	}
+
+	user.SetPassword(req.Password)
+	result = db.Save(&user)
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": result.Error.Error()})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, gin.H{"status": "success", "message": "password updated"})
+}

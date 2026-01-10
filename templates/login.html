@@ -3,12 +3,12 @@
 <div class="login-container">
     <div class="login-card" x-data="loginForm()">
         <div class="login-header">
-            <div class="login-logo">⚡</div>
-            <h1>NMAP Dashboard</h1>
-            <p>Sign in to access the dashboard</p>
+            <div class="login-logo">NMAP</div>
+            <h1>Dashboard</h1>
+            <p>Sign in to continue</p>
         </div>
 
-        <div x-show="error" x-cloak class="alert alert-error mb-4">
+        <div x-show="error" x-cloak class="alert alert-error">
             <span x-text="error"></span>
         </div>
 
@@ -20,7 +20,7 @@
                     id="username" 
                     name="user" 
                     class="form-input" 
-                    placeholder="Enter your username"
+                    placeholder="Enter username"
                     x-model="username"
                     required
                     autofocus
@@ -34,20 +34,20 @@
                     id="password" 
                     name="password" 
                     class="form-input" 
-                    placeholder="Enter your password"
+                    placeholder="Enter password"
                     x-model="password"
                     required
                 >
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" :disabled="loading">
+            <button type="submit" class="btn btn-primary" style="width: 100%;" :disabled="loading">
                 <span x-show="!loading">Sign In</span>
                 <span x-show="loading" class="loading-spinner"></span>
             </button>
         </form>
 
-        <p class="text-center text-muted text-sm mt-4">
-            Don't have an account? <a href="/register.html" style="color: var(--accent-cyan);">Register</a>
+        <p class="text-center text-muted text-sm mt-3">
+            Need an account? <a href="/register.html" style="color: var(--accent-primary);">Register</a>
         </p>
     </div>
 </div>
@@ -76,7 +76,7 @@ function loginForm() {
                     this.error = response.message || 'Login failed';
                 }
             } catch (err) {
-                this.error = err.message || 'Login failed. Please try again.';
+                this.error = err.message || 'Login failed';
             } finally {
                 this.loading = false;
             }

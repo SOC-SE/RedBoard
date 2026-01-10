@@ -1,7 +1,7 @@
 <nav class="navbar">
     <a href="/main.html" class="navbar-brand">
-        <div class="icon">⚡</div>
-        <span>NMAP Dashboard</span>
+        <span class="logo">NMAP</span>
+        <span>Dashboard</span>
     </a>
     
     <ul class="navbar-nav">
@@ -15,16 +15,12 @@
     </ul>
     
     <div class="navbar-user">
-        <div class="user-badge">
-            <div class="user-avatar">{{ slice .user 0 1 }}</div>
-            <span>{{ .user }}</span>
-        </div>
+        <span class="user-info">Logged in as <strong>{{ .user }}</strong></span>
         <a href="/logout.html" class="btn btn-secondary btn-sm">Logout</a>
     </div>
 </nav>
 
 <script>
-// Highlight active nav link
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname;
     const navLinks = {

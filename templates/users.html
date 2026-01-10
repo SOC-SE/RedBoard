@@ -5,11 +5,12 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
         <h2>User Management</h2>
+        <button class="btn btn-primary" @click="openCreateModal()">+ Add User</button>
     </div>
 
     <!-- Loading State -->
-    <div x-show="loading" class="text-center" style="padding: 4rem;">
-        <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+    <div x-show="loading" class="text-center" style="padding: 40px;">
+        <div class="loading-spinner" style="width: 30px; height: 30px;"></div>
     </div>
 
     <!-- Users Table -->
@@ -19,11 +20,11 @@
                 <thead>
                     <tr>
                         <th>Username</th>
-                        <th style="width: 100px;">Active</th>
-                        <th style="width: 100px;">Admin</th>
-                        <th style="width: 100px;">Scanner</th>
-                        <th style="width: 100px;">Viewer</th>
-                        <th style="width: 180px;">Actions</th>
+                        <th style="width: 80px;">Active</th>
+                        <th style="width: 80px;">Admin</th>
+                        <th style="width: 80px;">Scanner</th>
+                        <th style="width: 80px;">Viewer</th>
+                        <th style="width: 200px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -71,7 +72,7 @@
                                 </label>
                             </td>
                             <td>
-                                <div class="flex gap-2">
+                                <div class="flex gap-1">
                                     <button 
                                         class="btn btn-primary btn-sm" 
                                         @click="saveUser(user)"
@@ -82,9 +83,12 @@
                                         <span x-show="user.saving" class="loading-spinner"></span>
                                     </button>
                                     <button 
+                                        class="btn btn-secondary btn-sm" 
+                                        @click="openPasswordModal(user)"
+                                    >Password</button>
+                                    <button 
                                         class="btn btn-danger btn-sm" 
                                         @click="confirmDelete(user)"
-                                        :disabled="user.name === 'admin'"
                                         x-show="user.name !== 'admin'"
                                     >Delete</button>
                                 </div>
@@ -96,8 +100,90 @@
         </div>
     </div>
 
+    <!-- Create User Modal -->
+    <div class="modal-overlay" :class="{ active: showCreateModal }">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Create User</h3>
+                <button class="modal-close" @click="showCreateModal = false">&times;</button>
+            </div>
+            <form @submit.prevent="createUser()">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-input" x-model="newUser.name" placeholder="Enter username" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" x-model="newUser.password" placeholder="Enter password" required minlength="8">
+                        <div class="form-hint">Minimum 8 characters</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Roles</label>
+                        <div class="flex gap-3 mt-2">
+                            <label class="flex items-center gap-1">
+                                <input type="checkbox" x-model="newUser.roles" value="admin"> Admin
+                            </label>
+                            <label class="flex items-center gap-1">
+                                <input type="checkbox" x-model="newUser.roles" value="scanner"> Scanner
+                            </label>
+                            <label class="flex items-center gap-1">
+                                <input type="checkbox" x-model="newUser.roles" value="viewer" checked> Viewer
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" x-model="newUser.active">
+                            <span>Activate immediately</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="showCreateModal = false">Cancel</button>
+                    <button type="submit" class="btn btn-primary" :disabled="creating">
+                        <span x-show="!creating">Create User</span>
+                        <span x-show="creating" class="loading-spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" :class="{ active: showPasswordModal }">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Change Password</h3>
+                <button class="modal-close" @click="showPasswordModal = false">&times;</button>
+            </div>
+            <form @submit.prevent="changePassword()">
+                <div class="modal-body">
+                    <p class="mb-3">Changing password for: <strong x-text="passwordUser?.name"></strong></p>
+                    <div class="form-group">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-input" x-model="newPassword" placeholder="Enter new password" required minlength="8">
+                        <div class="form-hint">Minimum 8 characters</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" class="form-input" x-model="confirmPassword" placeholder="Confirm new password" required>
+                    </div>
+                    <div x-show="passwordError" class="alert alert-error" x-text="passwordError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="showPasswordModal = false">Cancel</button>
+                    <button type="submit" class="btn btn-primary" :disabled="changingPassword">
+                        <span x-show="!changingPassword">Change Password</span>
+                        <span x-show="changingPassword" class="loading-spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Delete Confirmation Modal -->
-    <div class="modal-overlay" :class="{ active: showDeleteModal }" id="delete-modal">
+    <div class="modal-overlay" :class="{ active: showDeleteModal }">
         <div class="modal" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 class="modal-title">Delete User</h3>
@@ -110,7 +196,7 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
                 <button class="btn btn-danger" @click="deleteUser()" :disabled="deleting">
-                    <span x-show="!deleting">Delete User</span>
+                    <span x-show="!deleting">Delete</span>
                     <span x-show="deleting" class="loading-spinner"></span>
                 </button>
             </div>
@@ -123,6 +209,21 @@ function usersPage() {
     return {
         users: [],
         loading: true,
+        
+        // Create user
+        showCreateModal: false,
+        creating: false,
+        newUser: { name: '', password: '', roles: ['viewer'], active: true },
+        
+        // Password change
+        showPasswordModal: false,
+        passwordUser: null,
+        newPassword: '',
+        confirmPassword: '',
+        passwordError: '',
+        changingPassword: false,
+        
+        // Delete
         showDeleteModal: false,
         deletingUser: null,
         deleting: false,
@@ -145,14 +246,12 @@ function usersPage() {
 
         toggleRole(user, role) {
             if (!user.roles) user.roles = [];
-            
             const index = user.roles.indexOf(role);
             if (index === -1) {
                 user.roles.push(role);
             } else {
                 user.roles.splice(index, 1);
             }
-            
             this.markModified(user);
         },
 
@@ -176,6 +275,63 @@ function usersPage() {
             }
         },
 
+        // Create user methods
+        openCreateModal() {
+            this.newUser = { name: '', password: '', roles: ['viewer'], active: true };
+            this.showCreateModal = true;
+        },
+
+        async createUser() {
+            this.creating = true;
+            try {
+                await API.post('{{ getAPIBaseURL }}/auth/admin/create-user', this.newUser);
+                Toast.success(`User ${this.newUser.name} created`);
+                this.showCreateModal = false;
+                await this.loadUsers();
+            } catch (err) {
+                Toast.error(err.message || 'Failed to create user');
+            } finally {
+                this.creating = false;
+            }
+        },
+
+        // Password change methods
+        openPasswordModal(user) {
+            this.passwordUser = user;
+            this.newPassword = '';
+            this.confirmPassword = '';
+            this.passwordError = '';
+            this.showPasswordModal = true;
+        },
+
+        async changePassword() {
+            this.passwordError = '';
+            
+            if (this.newPassword !== this.confirmPassword) {
+                this.passwordError = 'Passwords do not match';
+                return;
+            }
+            
+            if (this.newPassword.length < 8) {
+                this.passwordError = 'Password must be at least 8 characters';
+                return;
+            }
+
+            this.changingPassword = true;
+            try {
+                await API.put(`{{ getAPIBaseURL }}/auth/admin/reset-password/${this.passwordUser.uid}`, {
+                    password: this.newPassword
+                });
+                Toast.success(`Password changed for ${this.passwordUser.name}`);
+                this.showPasswordModal = false;
+            } catch (err) {
+                this.passwordError = err.message || 'Failed to change password';
+            } finally {
+                this.changingPassword = false;
+            }
+        },
+
+        // Delete methods
         confirmDelete(user) {
             this.deletingUser = user;
             this.showDeleteModal = true;
@@ -185,7 +341,7 @@ function usersPage() {
             this.deleting = true;
             try {
                 await API.delete(`{{ getAPIBaseURL }}/auth/user/${this.deletingUser.uid}`);
-                Toast.success('User deleted successfully');
+                Toast.success('User deleted');
                 this.showDeleteModal = false;
                 await this.loadUsers();
             } catch (err) {

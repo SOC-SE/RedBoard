@@ -154,7 +154,7 @@ function dashboard() {
         async refresh() {
             this.loading = true;
             try {
-                const data = await API.get('{{ getAPIBaseURL }}/dashboard/data');
+                const data = await API.get('/dashboard/data');
                 this.teams = data.teams || [];
                 this.stats = {
                     teams: data.total_teams || 0,

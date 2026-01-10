@@ -157,7 +157,7 @@ function teamsPage() {
         async loadTeams() {
             this.loading = true;
             try {
-                this.teams = await API.get('{{ getAPIBaseURL }}/teams?include_hosts=true');
+                this.teams = await API.get('/teams?include_hosts=true');
             } catch (err) {
                 Toast.error('Failed to load teams');
             } finally {
@@ -191,10 +191,10 @@ function teamsPage() {
             this.saving = true;
             try {
                 if (this.editingTeam) {
-                    await API.put(`{{ getAPIBaseURL }}/teams/${this.editingTeam.tid}`, this.form);
+                    await API.put(`/teams/${this.editingTeam.tid}`, this.form);
                     Toast.success('Team updated successfully');
                 } else {
-                    await API.post('{{ getAPIBaseURL }}/teams', this.form);
+                    await API.post('/teams', this.form);
                     Toast.success('Team created successfully');
                 }
                 this.closeModal();
@@ -214,7 +214,7 @@ function teamsPage() {
         async deleteTeam() {
             this.deleting = true;
             try {
-                await API.delete(`{{ getAPIBaseURL }}/teams/${this.deletingTeam.tid}`);
+                await API.delete(`/teams/${this.deletingTeam.tid}`);
                 Toast.success('Team deleted successfully');
                 this.showDeleteModal = false;
                 await this.loadTeams();

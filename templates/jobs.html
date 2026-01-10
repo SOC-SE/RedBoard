@@ -164,7 +164,7 @@ function jobsPage() {
         async loadJobs() {
             this.loading = true;
             try {
-                let url = '{{ getAPIBaseURL }}/jobs?limit=100';
+                let url = '/jobs?limit=100';
                 if (this.filter) url += `&status=${this.filter}`;
                 const jobs = await API.get(url);
                 this.jobs = jobs.map(j => ({ ...j, cancelling: false }));
@@ -177,7 +177,7 @@ function jobsPage() {
 
         async loadManagers() {
             try {
-                this.managers = await API.get('{{ getAPIBaseURL }}/jobs/manager');
+                this.managers = await API.get('/jobs/manager');
             } catch (err) {
                 console.error('Failed to load managers:', err);
             }
@@ -186,7 +186,7 @@ function jobsPage() {
         async cancelJob(job) {
             job.cancelling = true;
             try {
-                await API.post(`{{ getAPIBaseURL }}/jobs/${job.jid}/cancel`);
+                await API.post(`/jobs/${job.jid}/cancel`);
                 Toast.success('Job cancelled');
                 await this.loadJobs();
             } catch (err) {

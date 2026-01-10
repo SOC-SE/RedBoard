@@ -3,8 +3,7 @@
 <div class="login-container">
     <div class="login-card" x-data="loginForm()">
         <div class="login-header">
-            <div class="login-logo">NMAP</div>
-            <h1>Dashboard</h1>
+            <h1>NMAP Dashboard</h1>
             <p>Sign in to continue</p>
         </div>
 
@@ -15,29 +14,12 @@
         <form @submit.prevent="submit">
             <div class="form-group">
                 <label class="form-label" for="username">Username</label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    name="user" 
-                    class="form-input" 
-                    placeholder="Enter username"
-                    x-model="username"
-                    required
-                    autofocus
-                >
+                <input type="text" id="username" class="form-input" placeholder="Username" x-model="username" required autofocus>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    class="form-input" 
-                    placeholder="Enter password"
-                    x-model="password"
-                    required
-                >
+                <input type="password" id="password" class="form-input" placeholder="Password" x-model="password" required>
             </div>
 
             <button type="submit" class="btn btn-primary" style="width: 100%;" :disabled="loading">
@@ -47,7 +29,7 @@
         </form>
 
         <p class="text-center text-muted text-sm mt-3">
-            Need an account? <a href="/register.html" style="color: var(--accent-primary);">Register</a>
+            Need an account? <a href="/register.html" style="color: var(--accent-green-bright);">Register</a>
         </p>
     </div>
 </div>
@@ -65,13 +47,13 @@ function loginForm() {
             this.loading = true;
 
             try {
-                const response = await API.post('{{ getAPIBaseURL }}/auth/login', {
+                const response = await API.post('/auth/login', {
                     user: this.username,
                     password: this.password
                 });
 
                 if (response.status === 'success') {
-                    window.location.href = '{{ getAPIBaseURL }}/main.html';
+                    window.location.href = '/main.html';
                 } else {
                     this.error = response.message || 'Login failed';
                 }

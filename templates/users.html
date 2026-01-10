@@ -2,29 +2,26 @@
 {{ template "menu.html" . }}
 
 <main class="main-content" x-data="usersPage()" x-init="loadUsers()">
-    <!-- Header -->
     <div class="flex items-center justify-between mb-4">
         <h2>User Management</h2>
         <button class="btn btn-primary" @click="openCreateModal()">+ Add User</button>
     </div>
 
-    <!-- Loading State -->
     <div x-show="loading" class="text-center" style="padding: 40px;">
-        <div class="loading-spinner" style="width: 30px; height: 30px;"></div>
+        <div class="loading-spinner" style="width: 24px; height: 24px;"></div>
     </div>
 
-    <!-- Users Table -->
-    <div class="card" x-show="!loading">
+    <div class="card" x-show="!loading" x-cloak>
         <div class="table-container">
             <table class="table">
                 <thead>
                     <tr>
                         <th>Username</th>
-                        <th style="width: 80px;">Active</th>
-                        <th style="width: 80px;">Admin</th>
-                        <th style="width: 80px;">Scanner</th>
-                        <th style="width: 80px;">Viewer</th>
-                        <th style="width: 200px;">Actions</th>
+                        <th style="width: 70px;">Active</th>
+                        <th style="width: 70px;">Admin</th>
+                        <th style="width: 70px;">Scanner</th>
+                        <th style="width: 70px;">Viewer</th>
+                        <th style="width: 180px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -34,63 +31,41 @@
                                 <div class="flex items-center gap-2">
                                     <div class="user-avatar" x-text="user.name.charAt(0).toUpperCase()"></div>
                                     <strong x-text="user.name"></strong>
-                                    <span x-show="user.name === 'admin'" class="badge badge-purple">System</span>
+                                    <span x-show="user.name === 'admin'" class="badge badge-orange">System</span>
                                 </div>
                             </td>
                             <td>
                                 <label class="toggle">
-                                    <input type="checkbox" 
-                                           x-model="user.active" 
-                                           @change="markModified(user)"
-                                           :disabled="user.name === 'admin'">
+                                    <input type="checkbox" x-model="user.active" @change="markModified(user)" :disabled="user.name === 'admin'">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </td>
                             <td>
                                 <label class="toggle">
-                                    <input type="checkbox" 
-                                           :checked="hasRole(user, 'admin')"
-                                           @change="toggleRole(user, 'admin')"
-                                           :disabled="user.name === 'admin'">
+                                    <input type="checkbox" :checked="hasRole(user, 'admin')" @change="toggleRole(user, 'admin')" :disabled="user.name === 'admin'">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </td>
                             <td>
                                 <label class="toggle">
-                                    <input type="checkbox" 
-                                           :checked="hasRole(user, 'scanner')"
-                                           @change="toggleRole(user, 'scanner')">
+                                    <input type="checkbox" :checked="hasRole(user, 'scanner')" @change="toggleRole(user, 'scanner')">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </td>
                             <td>
                                 <label class="toggle">
-                                    <input type="checkbox" 
-                                           :checked="hasRole(user, 'viewer')"
-                                           @change="toggleRole(user, 'viewer')">
+                                    <input type="checkbox" :checked="hasRole(user, 'viewer')" @change="toggleRole(user, 'viewer')">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </td>
                             <td>
                                 <div class="flex gap-1">
-                                    <button 
-                                        class="btn btn-primary btn-sm" 
-                                        @click="saveUser(user)"
-                                        :disabled="!user.modified || user.saving"
-                                        x-show="user.modified"
-                                    >
+                                    <button class="btn btn-primary btn-sm" @click="saveUser(user)" :disabled="!user.modified || user.saving" x-show="user.modified">
                                         <span x-show="!user.saving">Save</span>
                                         <span x-show="user.saving" class="loading-spinner"></span>
                                     </button>
-                                    <button 
-                                        class="btn btn-secondary btn-sm" 
-                                        @click="openPasswordModal(user)"
-                                    >Password</button>
-                                    <button 
-                                        class="btn btn-danger btn-sm" 
-                                        @click="confirmDelete(user)"
-                                        x-show="user.name !== 'admin'"
-                                    >Delete</button>
+                                    <button class="btn btn-secondary btn-sm" @click="openPasswordModal(user)">Password</button>
+                                    <button class="btn btn-danger btn-sm" @click="confirmDelete(user)" x-show="user.name !== 'admin'">Delete</button>
                                 </div>
                             </td>
                         </tr>
@@ -109,27 +84,22 @@
             </div>
             <form @submit.prevent="createUser()">
                 <div class="modal-body">
+                    <div x-show="createError" class="alert alert-error" x-text="createError"></div>
                     <div class="form-group">
                         <label class="form-label">Username</label>
-                        <input type="text" class="form-input" x-model="newUser.name" placeholder="Enter username" required minlength="3">
+                        <input type="text" class="form-input" x-model="newUser.name" placeholder="Username" required minlength="3">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Password</label>
-                        <input type="password" class="form-input" x-model="newUser.password" placeholder="Enter password" required minlength="8">
-                        <div class="form-hint">Minimum 8 characters</div>
+                        <input type="password" class="form-input" x-model="newUser.password" placeholder="Password" required minlength="8">
+                        <div class="form-hint">Min 8 characters</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Roles</label>
                         <div class="flex gap-3 mt-2">
-                            <label class="flex items-center gap-1">
-                                <input type="checkbox" x-model="newUser.roles" value="admin"> Admin
-                            </label>
-                            <label class="flex items-center gap-1">
-                                <input type="checkbox" x-model="newUser.roles" value="scanner"> Scanner
-                            </label>
-                            <label class="flex items-center gap-1">
-                                <input type="checkbox" x-model="newUser.roles" value="viewer" checked> Viewer
-                            </label>
+                            <label class="flex items-center gap-1"><input type="checkbox" x-model="newUser.roles" value="admin"> Admin</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" x-model="newUser.roles" value="scanner"> Scanner</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" x-model="newUser.roles" value="viewer"> Viewer</label>
                         </div>
                     </div>
                     <div class="form-group">
@@ -142,7 +112,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @click="showCreateModal = false">Cancel</button>
                     <button type="submit" class="btn btn-primary" :disabled="creating">
-                        <span x-show="!creating">Create User</span>
+                        <span x-show="!creating">Create</span>
                         <span x-show="creating" class="loading-spinner"></span>
                     </button>
                 </div>
@@ -150,7 +120,7 @@
         </div>
     </div>
 
-    <!-- Change Password Modal -->
+    <!-- Password Modal -->
     <div class="modal-overlay" :class="{ active: showPasswordModal }">
         <div class="modal">
             <div class="modal-header">
@@ -159,22 +129,22 @@
             </div>
             <form @submit.prevent="changePassword()">
                 <div class="modal-body">
-                    <p class="mb-3">Changing password for: <strong x-text="passwordUser?.name"></strong></p>
+                    <p class="mb-3">User: <strong x-text="passwordUser?.name"></strong></p>
+                    <div x-show="passwordError" class="alert alert-error" x-text="passwordError"></div>
                     <div class="form-group">
                         <label class="form-label">New Password</label>
-                        <input type="password" class="form-input" x-model="newPassword" placeholder="Enter new password" required minlength="8">
-                        <div class="form-hint">Minimum 8 characters</div>
+                        <input type="password" class="form-input" x-model="newPassword" placeholder="New password" required minlength="8">
+                        <div class="form-hint">Min 8 characters</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Confirm Password</label>
-                        <input type="password" class="form-input" x-model="confirmPassword" placeholder="Confirm new password" required>
+                        <input type="password" class="form-input" x-model="confirmPassword" placeholder="Confirm password" required>
                     </div>
-                    <div x-show="passwordError" class="alert alert-error" x-text="passwordError"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @click="showPasswordModal = false">Cancel</button>
                     <button type="submit" class="btn btn-primary" :disabled="changingPassword">
-                        <span x-show="!changingPassword">Change Password</span>
+                        <span x-show="!changingPassword">Change</span>
                         <span x-show="changingPassword" class="loading-spinner"></span>
                     </button>
                 </div>
@@ -182,16 +152,16 @@
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Delete Modal -->
     <div class="modal-overlay" :class="{ active: showDeleteModal }">
-        <div class="modal" style="max-width: 400px;">
+        <div class="modal" style="max-width: 350px;">
             <div class="modal-header">
                 <h3 class="modal-title">Delete User</h3>
                 <button class="modal-close" @click="showDeleteModal = false">&times;</button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete user <strong x-text="deletingUser?.name"></strong>?</p>
-                <p class="text-muted text-sm mt-2">This action cannot be undone.</p>
+                <p>Delete user <strong x-text="deletingUser?.name"></strong>?</p>
+                <p class="text-muted text-sm mt-2">This cannot be undone.</p>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
@@ -205,25 +175,22 @@
 </main>
 
 <script>
+const API_BASE = '{{ getAPIBaseURL }}';
+
 function usersPage() {
     return {
         users: [],
         loading: true,
-        
-        // Create user
         showCreateModal: false,
         creating: false,
+        createError: '',
         newUser: { name: '', password: '', roles: ['viewer'], active: true },
-        
-        // Password change
         showPasswordModal: false,
         passwordUser: null,
         newPassword: '',
         confirmPassword: '',
         passwordError: '',
         changingPassword: false,
-        
-        // Delete
         showDeleteModal: false,
         deletingUser: null,
         deleting: false,
@@ -231,8 +198,8 @@ function usersPage() {
         async loadUsers() {
             this.loading = true;
             try {
-                const users = await API.get('{{ getAPIBaseURL }}/auth/users');
-                this.users = users.map(u => ({ ...u, modified: false, saving: false }));
+                this.users = await API.get(API_BASE + '/auth/users');
+                this.users = this.users.map(u => ({ ...u, modified: false, saving: false }));
             } catch (err) {
                 Toast.error('Failed to load users');
             } finally {
@@ -246,12 +213,9 @@ function usersPage() {
 
         toggleRole(user, role) {
             if (!user.roles) user.roles = [];
-            const index = user.roles.indexOf(role);
-            if (index === -1) {
-                user.roles.push(role);
-            } else {
-                user.roles.splice(index, 1);
-            }
+            const idx = user.roles.indexOf(role);
+            if (idx === -1) user.roles.push(role);
+            else user.roles.splice(idx, 1);
             this.markModified(user);
         },
 
@@ -262,40 +226,37 @@ function usersPage() {
         async saveUser(user) {
             user.saving = true;
             try {
-                await API.put(`{{ getAPIBaseURL }}/auth/users/${user.uid}`, {
-                    active: user.active,
-                    roles: user.roles
-                });
+                await API.put(API_BASE + '/auth/users/' + user.uid, { active: user.active, roles: user.roles });
                 user.modified = false;
-                Toast.success(`User ${user.name} updated`);
+                Toast.success('User updated');
             } catch (err) {
-                Toast.error(err.message || 'Failed to update user');
+                Toast.error(err.message || 'Failed to update');
             } finally {
                 user.saving = false;
             }
         },
 
-        // Create user methods
         openCreateModal() {
             this.newUser = { name: '', password: '', roles: ['viewer'], active: true };
+            this.createError = '';
             this.showCreateModal = true;
         },
 
         async createUser() {
+            this.createError = '';
             this.creating = true;
             try {
-                await API.post('{{ getAPIBaseURL }}/auth/admin/create-user', this.newUser);
-                Toast.success(`User ${this.newUser.name} created`);
+                await API.post(API_BASE + '/auth/admin/create-user', this.newUser);
+                Toast.success('User created');
                 this.showCreateModal = false;
                 await this.loadUsers();
             } catch (err) {
-                Toast.error(err.message || 'Failed to create user');
+                this.createError = err.message || 'Failed to create user';
             } finally {
                 this.creating = false;
             }
         },
 
-        // Password change methods
         openPasswordModal(user) {
             this.passwordUser = user;
             this.newPassword = '';
@@ -306,23 +267,18 @@ function usersPage() {
 
         async changePassword() {
             this.passwordError = '';
-            
             if (this.newPassword !== this.confirmPassword) {
                 this.passwordError = 'Passwords do not match';
                 return;
             }
-            
             if (this.newPassword.length < 8) {
                 this.passwordError = 'Password must be at least 8 characters';
                 return;
             }
-
             this.changingPassword = true;
             try {
-                await API.put(`{{ getAPIBaseURL }}/auth/admin/reset-password/${this.passwordUser.uid}`, {
-                    password: this.newPassword
-                });
-                Toast.success(`Password changed for ${this.passwordUser.name}`);
+                await API.put(API_BASE + '/auth/admin/reset-password/' + this.passwordUser.uid, { password: this.newPassword });
+                Toast.success('Password changed');
                 this.showPasswordModal = false;
             } catch (err) {
                 this.passwordError = err.message || 'Failed to change password';
@@ -331,7 +287,6 @@ function usersPage() {
             }
         },
 
-        // Delete methods
         confirmDelete(user) {
             this.deletingUser = user;
             this.showDeleteModal = true;
@@ -340,12 +295,12 @@ function usersPage() {
         async deleteUser() {
             this.deleting = true;
             try {
-                await API.delete(`{{ getAPIBaseURL }}/auth/user/${this.deletingUser.uid}`);
+                await API.delete(API_BASE + '/auth/user/' + this.deletingUser.uid);
                 Toast.success('User deleted');
                 this.showDeleteModal = false;
                 await this.loadUsers();
             } catch (err) {
-                Toast.error(err.message || 'Failed to delete user');
+                Toast.error(err.message || 'Failed to delete');
             } finally {
                 this.deleting = false;
             }

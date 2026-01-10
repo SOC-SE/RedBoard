@@ -9,28 +9,28 @@
                 <h4>Teams</h4>
                 <div class="stat-value" id="stat-teams">-</div>
             </div>
-            <div class="stat-icon blue">📊</div>
+            <div class="stat-icon blue"></div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Hosts</h4>
                 <div class="stat-value" id="stat-hosts">-</div>
             </div>
-            <div class="stat-icon green">🖥️</div>
+            <div class="stat-icon green"></div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Open Ports</h4>
                 <div class="stat-value" id="stat-ports">-</div>
             </div>
-            <div class="stat-icon yellow">🔓</div>
+            <div class="stat-icon yellow"></div>
         </div>
         <div class="stat-card danger">
             <div class="stat-content">
                 <h4>Dangerous Ports</h4>
                 <div class="stat-value" id="stat-dangerous">-</div>
             </div>
-            <div class="stat-icon red">⚠️</div>
+            <div class="stat-icon red"></div>
         </div>
     </div>
 
@@ -40,7 +40,7 @@
         <div class="flex gap-2">
             <span class="text-muted text-sm" id="last-update"></span>
             <button class="btn btn-secondary btn-sm" id="refresh-btn" onclick="refreshDashboard()">
-                ↻ Refresh
+                Refresh
             </button>
         </div>
     </div>
@@ -53,7 +53,7 @@
 
     <!-- Empty State -->
     <div id="empty-state" class="empty-state" style="display: none;">
-        <div class="empty-state-icon">📡</div>
+        <div class="empty-state-icon">--</div>
         <h3>No Teams Configured</h3>
         <p class="text-muted">Add teams to start monitoring network assets.</p>
         {{if .roles | isAdmin}}
@@ -220,7 +220,7 @@ function refreshDashboard() {
         }
         
         refreshBtn.disabled = false;
-        refreshBtn.innerHTML = '↻ Refresh';
+        refreshBtn.innerHTML = 'Refresh';
     })
     .catch(function(err) {
         console.error('[Dashboard] Error:', err);
@@ -232,7 +232,7 @@ function refreshDashboard() {
             '</div>';
         
         refreshBtn.disabled = false;
-        refreshBtn.innerHTML = '↻ Refresh';
+        refreshBtn.innerHTML = 'Refresh';
     });
 }
 

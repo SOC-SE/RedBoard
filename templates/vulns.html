@@ -4,11 +4,11 @@
 <main class="main-content" id="vulns-app">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
-        <h2>🔓 Vulnerability Findings</h2>
+        <h2>Vulnerability Findings</h2>
         <div class="flex gap-2">
             <span class="text-muted text-sm" id="last-update"></span>
             <button class="btn btn-secondary btn-sm" id="refresh-btn" onclick="refreshVulns()">
-                ↻ Refresh
+                Refresh
             </button>
         </div>
     </div>
@@ -20,28 +20,28 @@
                 <h4>Critical</h4>
                 <div class="stat-value" id="stat-critical">-</div>
             </div>
-            <div class="stat-icon red">🚨</div>
+            <div class="stat-icon red"></div>
         </div>
         <div class="stat-card" style="border-color: #f97316;">
             <div class="stat-content">
                 <h4>High</h4>
                 <div class="stat-value" id="stat-high">-</div>
             </div>
-            <div class="stat-icon" style="background: rgba(249, 115, 22, 0.2); color: #f97316;">⚠️</div>
+            <div class="stat-icon" style="background: rgba(249, 115, 22, 0.2); color: #f97316;"></div>
         </div>
         <div class="stat-card" style="border-color: #eab308;">
             <div class="stat-content">
                 <h4>Medium</h4>
                 <div class="stat-value" id="stat-medium">-</div>
             </div>
-            <div class="stat-icon" style="background: rgba(234, 179, 8, 0.2); color: #eab308;">📋</div>
+            <div class="stat-icon" style="background: rgba(234, 179, 8, 0.2); color: #eab308;"></div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Total</h4>
                 <div class="stat-value" id="stat-total">-</div>
             </div>
-            <div class="stat-icon blue">📊</div>
+            <div class="stat-icon blue"></div>
         </div>
     </div>
 
@@ -53,7 +53,7 @@
 
     <!-- Empty State -->
     <div id="empty-state" class="empty-state" style="display: none;">
-        <div class="empty-state-icon">✅</div>
+        <div class="empty-state-icon">--</div>
         <h3>No Vulnerabilities Found</h3>
         <p class="text-muted">NSE scripts haven't detected any vulnerabilities yet.</p>
         <p class="text-muted text-sm">Make sure ENABLE_SCRIPTS=true in your scanner config.</p>
@@ -211,7 +211,7 @@ function refreshVulns() {
         }
         
         refreshBtn.disabled = false;
-        refreshBtn.innerHTML = '↻ Refresh';
+        refreshBtn.innerHTML = 'Refresh';
     })
     .catch(function(err) {
         console.error('[Vulns] Error:', err);
@@ -223,7 +223,7 @@ function refreshVulns() {
             '</div>';
         
         refreshBtn.disabled = false;
-        refreshBtn.innerHTML = '↻ Refresh';
+        refreshBtn.innerHTML = 'Refresh';
     });
 }
 

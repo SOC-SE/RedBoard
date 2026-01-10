@@ -14,7 +14,7 @@
                 <option value="failed">Failed</option>
             </select>
             <button class="btn btn-secondary" @click="loadJobs()" :disabled="loading">
-                <span x-show="!loading">↻ Refresh</span>
+                <span x-show="!loading">Refresh</span>
                 <span x-show="loading" class="loading-spinner"></span>
             </button>
         </div>
@@ -27,28 +27,28 @@
                 <h4>Total Jobs</h4>
                 <div class="stat-value" x-text="jobs.length">0</div>
             </div>
-            <div class="stat-icon blue">📋</div>
+            <div class="stat-icon blue"></div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Running</h4>
                 <div class="stat-value" x-text="jobs.filter(j => j.status === 'running').length">0</div>
             </div>
-            <div class="stat-icon yellow">⏳</div>
+            <div class="stat-icon yellow"></div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Complete</h4>
                 <div class="stat-value" x-text="jobs.filter(j => j.status === 'complete').length">0</div>
             </div>
-            <div class="stat-icon green">✓</div>
+            <div class="stat-icon green"></div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Failed</h4>
                 <div class="stat-value" x-text="jobs.filter(j => j.status === 'failed').length">0</div>
             </div>
-            <div class="stat-icon red">✗</div>
+            <div class="stat-icon red"></div>
         </div>
     </div>
 
@@ -59,7 +59,7 @@
 
     <!-- Empty State -->
     <div x-show="!loading && jobs.length === 0" class="empty-state">
-        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-icon">--</div>
         <h3>No Jobs Found</h3>
         <p class="text-muted">Jobs will appear here when scanners request work.</p>
     </div>

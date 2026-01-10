@@ -1,16 +1,20 @@
 # NMAP Dashboard Configuration
 # Copy this file to .env and update the values
 
-# Required: Base URL for the application
-API_BASE_URL=http://localhost:8080
-
-# Optional: Port to run the server on (default: 8080)
+# Server settings
 PORT=8080
+GIN_MODE=release
 
-# Optional: Session secret (generate with: openssl rand -base64 32)
-# If not set, a random secret will be generated on startup
-# Note: Sessions will not persist across restarts without this
-SESSION_SECRET=
+# Security - CHANGE THESE IN PRODUCTION!
+# Session secret (generate with: openssl rand -base64 32)
+SESSION_SECRET=change-me-to-a-random-32-character-string
 
-# Optional: Set to 'release' for production
-GIN_MODE=debug
+# Default admin password (used on first run)
+ADMIN_PASSWORD=changeme
+
+# Database path (SQLite)
+# Default is ./dashboard.db in current directory
+DB_PATH=./dashboard.db
+
+# API Base URL (usually leave empty unless behind reverse proxy)
+API_BASE_URL=

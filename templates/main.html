@@ -1,34 +1,34 @@
 {{ template "head.html" . }}
 {{ template "menu.html" . }}
 
-<main class="main-content" x-data="dashboard()" x-init="init()">
+<main class="main-content" x-data="dashboard()" x-init="init()" x-cloak>
     <!-- Stats Bar -->
     <div class="stats-bar">
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Teams</h4>
-                <div class="stat-value" x-text="stats.teams">-</div>
+                <div class="stat-value" x-text="stats.teams || 0">-</div>
             </div>
             <div class="stat-icon blue">📊</div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Hosts</h4>
-                <div class="stat-value" x-text="stats.hosts">-</div>
+                <div class="stat-value" x-text="stats.hosts || 0">-</div>
             </div>
             <div class="stat-icon green">🖥️</div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Open Ports</h4>
-                <div class="stat-value" x-text="stats.ports">-</div>
+                <div class="stat-value" x-text="stats.ports || 0">-</div>
             </div>
             <div class="stat-icon yellow">🔓</div>
         </div>
         <div class="stat-card danger">
             <div class="stat-content">
                 <h4>Dangerous Ports</h4>
-                <div class="stat-value" x-text="stats.dangerous">-</div>
+                <div class="stat-value" x-text="stats.dangerous || 0">-</div>
             </div>
             <div class="stat-icon red">⚠️</div>
         </div>
@@ -49,13 +49,13 @@
     </div>
 
     <!-- Loading State -->
-    <div x-show="loading && teams.length === 0" class="text-center" style="padding: 4rem;">
+    <div x-show="loading && (!teams || teams.length === 0)" class="text-center" style="padding: 4rem;">
         <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
         <p class="text-muted mt-3">Loading dashboard data...</p>
     </div>
 
     <!-- Empty State -->
-    <div x-show="!loading && teams.length === 0" class="empty-state">
+    <div x-show="!loading && (!teams || teams.length === 0)" class="empty-state">
         <div class="empty-state-icon">📡</div>
         <h3>No Teams Configured</h3>
         <p class="text-muted">Add teams to start monitoring network assets.</p>
@@ -65,7 +65,7 @@
     </div>
 
     <!-- Teams Grid -->
-    <div class="teams-grid" x-show="teams.length > 0">
+    <div class="teams-grid" x-show="teams && teams.length > 0">
         <template x-for="team in teams" :key="team.tid">
             <div class="team-card">
                 <!-- Team Header -->

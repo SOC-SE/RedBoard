@@ -18,18 +18,26 @@ func Init() {
 	fmt.Println("Initializing database...")
 	var err error
 
+	// Get database path from environment or use default
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "dashboard.db"
+	}
+
 	// Configure logger based on environment
 	logLevel := logger.Warn
 	if os.Getenv("GIN_MODE") != "release" {
 		logLevel = logger.Info
 	}
 
-	db, err = gorm.Open(sqlite.Open("dashboard.db"), &gorm.Config{
+	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
-		panic("failed to open database file")
+		panic("failed to open database file: " + err.Error())
 	}
+
+	fmt.Printf("Using database: %s\n", dbPath)
 
 	// Run migrations
 	db.AutoMigrate(&User{})
@@ -56,11 +64,28 @@ func Init() {
 		fmt.Println("Admin user does not exist, creating...")
 
 		adminUser := MakeUser("admin")
-		genpw, err := GenerateRandomString(32)
-		if err != nil {
-			panic("unable to generate random password")
+		
+		// Use ADMIN_PASSWORD from environment if set, otherwise generate random
+		adminPassword := os.Getenv("ADMIN_PASSWORD")
+		if adminPassword == "" {
+			adminPassword, err = GenerateRandomString(32)
+			if err != nil {
+				panic("unable to generate random password")
+			}
+			fmt.Println("========================================")
+			fmt.Printf("  Admin user created\n")
+			fmt.Printf("  Username: admin\n")
+			fmt.Printf("  Password: %s\n", adminPassword)
+			fmt.Println("========================================")
+		} else {
+			fmt.Println("========================================")
+			fmt.Printf("  Admin user created\n")
+			fmt.Printf("  Username: admin\n")
+			fmt.Printf("  Password: (from ADMIN_PASSWORD env)\n")
+			fmt.Println("========================================")
 		}
-		adminUser.SetPassword(genpw)
+		
+		adminUser.SetPassword(adminPassword)
 		adminUser.Active = true
 		adminUser.Roles = []string{"admin", "viewer", "scanner"}
 
@@ -68,12 +93,6 @@ func Init() {
 		if result.Error != nil {
 			panic("unable to save admin user")
 		}
-
-		fmt.Println("========================================")
-		fmt.Printf("  Admin user created\n")
-		fmt.Printf("  Username: admin\n")
-		fmt.Printf("  Password: %s\n", genpw)
-		fmt.Println("========================================")
 	}
 
 	// Initialize job status for nmap if not exists

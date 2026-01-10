@@ -43,6 +43,7 @@ func Init() {
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Host{})
 	db.AutoMigrate(&Port{})
+	db.AutoMigrate(&ScriptResult{})
 	db.AutoMigrate(&Team{})
 	db.AutoMigrate(&Job{})
 	db.AutoMigrate(&JobStatus{})

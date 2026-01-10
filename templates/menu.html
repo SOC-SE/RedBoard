@@ -3,6 +3,7 @@
     
     <ul class="navbar-nav">
         <li><a href="/main.html" class="nav-link" id="nav-dashboard">Dashboard</a></li>
+        <li><a href="/vulns.html" class="nav-link" id="nav-vulns">Vulns</a></li>
         {{if .roles | isAdmin}}
         <li><a href="/teams.html" class="nav-link" id="nav-teams">Teams</a></li>
         <li><a href="/jobs.html" class="nav-link" id="nav-jobs">Jobs</a></li>
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname;
     const navLinks = {
         '/main.html': 'nav-dashboard',
+        '/vulns.html': 'nav-vulns',
         '/teams.html': 'nav-teams',
         '/jobs.html': 'nav-jobs',
         '/users.html': 'nav-users',

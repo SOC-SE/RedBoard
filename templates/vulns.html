@@ -1,0 +1,242 @@
+{{ template "head.html" . }}
+{{ template "menu.html" . }}
+
+<main class="main-content" id="vulns-app">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <h2>🔓 Vulnerability Findings</h2>
+        <div class="flex gap-2">
+            <span class="text-muted text-sm" id="last-update"></span>
+            <button class="btn btn-secondary btn-sm" id="refresh-btn" onclick="refreshVulns()">
+                ↻ Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" style="margin-bottom: 1.5rem;">
+        <div class="stat-card danger">
+            <div class="stat-content">
+                <h4>Critical</h4>
+                <div class="stat-value" id="stat-critical">-</div>
+            </div>
+            <div class="stat-icon red">🚨</div>
+        </div>
+        <div class="stat-card" style="border-color: #f97316;">
+            <div class="stat-content">
+                <h4>High</h4>
+                <div class="stat-value" id="stat-high">-</div>
+            </div>
+            <div class="stat-icon" style="background: rgba(249, 115, 22, 0.2); color: #f97316;">⚠️</div>
+        </div>
+        <div class="stat-card" style="border-color: #eab308;">
+            <div class="stat-content">
+                <h4>Medium</h4>
+                <div class="stat-value" id="stat-medium">-</div>
+            </div>
+            <div class="stat-icon" style="background: rgba(234, 179, 8, 0.2); color: #eab308;">📋</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-content">
+                <h4>Total</h4>
+                <div class="stat-value" id="stat-total">-</div>
+            </div>
+            <div class="stat-icon blue">📊</div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="text-center" style="padding: 4rem;">
+        <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+        <p class="text-muted mt-3">Loading vulnerability data...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">✅</div>
+        <h3>No Vulnerabilities Found</h3>
+        <p class="text-muted">NSE scripts haven't detected any vulnerabilities yet.</p>
+        <p class="text-muted text-sm">Make sure ENABLE_SCRIPTS=true in your scanner config.</p>
+    </div>
+
+    <!-- Findings Table -->
+    <div id="vulns-container" style="display: none;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Team</th>
+                    <th>Host</th>
+                    <th>Port</th>
+                    <th>Script</th>
+                    <th>Finding</th>
+                </tr>
+            </thead>
+            <tbody id="vulns-table">
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<style>
+.severity-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.severity-critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+.severity-high {
+    background: rgba(249, 115, 22, 0.2);
+    color: #f97316;
+    border: 1px solid #f97316;
+}
+.severity-medium {
+    background: rgba(234, 179, 8, 0.2);
+    color: #eab308;
+    border: 1px solid #eab308;
+}
+.finding-output {
+    max-width: 400px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: monospace;
+    font-size: 0.8rem;
+    background: rgba(0,0,0,0.3);
+    padding: 0.5rem;
+    border-radius: 4px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+</style>
+
+<script>
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString();
+}
+
+function renderVulns(findings) {
+    var tbody = document.getElementById('vulns-table');
+    tbody.innerHTML = '';
+    
+    // Sort by severity (critical first)
+    var severityOrder = { 'critical': 0, 'high': 1, 'medium': 2 };
+    findings.sort(function(a, b) {
+        return (severityOrder[a.severity] || 3) - (severityOrder[b.severity] || 3);
+    });
+    
+    findings.forEach(function(finding) {
+        var row = document.createElement('tr');
+        row.innerHTML = 
+            '<td><span class="severity-badge severity-' + finding.severity + '">' + finding.severity + '</span></td>' +
+            '<td>' + escapeHtml(finding.team_name) + '</td>' +
+            '<td>' +
+                '<div>' + escapeHtml(finding.host_ip) + '</div>' +
+                '<div class="text-muted text-sm">' + escapeHtml(finding.hostname || '') + '</div>' +
+            '</td>' +
+            '<td>' + finding.port + '/' + finding.protocol + '<br><span class="text-muted text-sm">' + escapeHtml(finding.service) + '</span></td>' +
+            '<td><code>' + escapeHtml(finding.script_name) + '</code></td>' +
+            '<td><div class="finding-output">' + escapeHtml(finding.output) + '</div></td>';
+        tbody.appendChild(row);
+    });
+}
+
+function refreshVulns() {
+    console.log('[Vulns] Refreshing...');
+    
+    var loadingState = document.getElementById('loading-state');
+    var emptyState = document.getElementById('empty-state');
+    var vulnsContainer = document.getElementById('vulns-container');
+    var refreshBtn = document.getElementById('refresh-btn');
+    
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<span class="loading-spinner" style="width: 14px; height: 14px;"></span>';
+    
+    fetch('/vulnerabilities', {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('[Vulns] Data received:', data);
+        
+        var findings = data.findings || [];
+        
+        // Count by severity
+        var critical = 0, high = 0, medium = 0;
+        findings.forEach(function(f) {
+            if (f.severity === 'critical') critical++;
+            else if (f.severity === 'high') high++;
+            else medium++;
+        });
+        
+        // Update stats
+        document.getElementById('stat-critical').textContent = critical;
+        document.getElementById('stat-high').textContent = high;
+        document.getElementById('stat-medium').textContent = medium;
+        document.getElementById('stat-total').textContent = findings.length;
+        
+        // Update last update time
+        document.getElementById('last-update').textContent = 'Last updated: ' + formatTime(new Date());
+        
+        // Hide loading
+        loadingState.style.display = 'none';
+        
+        // Show findings or empty state
+        if (findings.length > 0) {
+            emptyState.style.display = 'none';
+            vulnsContainer.style.display = 'block';
+            renderVulns(findings);
+        } else {
+            emptyState.style.display = 'block';
+            vulnsContainer.style.display = 'none';
+        }
+        
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '↻ Refresh';
+    })
+    .catch(function(err) {
+        console.error('[Vulns] Error:', err);
+        loadingState.innerHTML = 
+            '<div style="color: var(--accent-red);">' +
+                '<p>Failed to load vulnerability data</p>' +
+                '<p class="text-muted text-sm">' + err.message + '</p>' +
+                '<button class="btn btn-primary mt-3" onclick="refreshVulns()">Retry</button>' +
+            '</div>';
+        
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '↻ Refresh';
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshVulns();
+    // Auto-refresh every 60 seconds
+    setInterval(refreshVulns, 60000);
+});
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(refreshVulns, 100);
+}
+</script>
+
+{{ template "footer.html" . }}

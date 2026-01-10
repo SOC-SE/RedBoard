@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -190,6 +191,16 @@ func (j JobController) UploadScan(c *gin.Context) {
 				c.IndentedJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 				return
 			}
+			
+			// Save script results if present
+			for i := range port.Scripts {
+				port.Scripts[i].PortID = port.ID
+				if err := tx.Create(&port.Scripts[i]).Error; err != nil {
+					// Log but don't fail on script save errors
+					fmt.Printf("Warning: failed to save script result: %v\n", err)
+				}
+			}
+			
 			portsProcessed++
 		}
 

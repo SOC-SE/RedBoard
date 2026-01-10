@@ -162,9 +162,24 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Dangerous ports for highlighting
+// These are ports that often indicate security risks or require immediate attention
 const DANGEROUS_PORTS = new Set([
-    21, 22, 23, 25, 53, 110, 135, 139, 143, 445,
-    1433, 1521, 3306, 3389, 5432, 5900, 6379, 8080, 27017
+    21,    // FTP - cleartext auth, anonymous access risk
+    23,    // Telnet - cleartext everything
+    25,    // SMTP - open relay risk (less critical on internal)
+    110,   // POP3 - cleartext auth
+    135,   // MSRPC - Windows RPC, often exploited
+    139,   // NetBIOS - legacy, info disclosure
+    143,   // IMAP - cleartext auth
+    445,   // SMB - EternalBlue, ransomware favorite
+    1433,  // MSSQL - database exposure
+    1521,  // Oracle - database exposure
+    3306,  // MySQL - database exposure
+    3389,  // RDP - brute force target, BlueKeep
+    5432,  // PostgreSQL - database exposure
+    5900,  // VNC - often unauth or weak auth
+    6379,  // Redis - often no auth
+    27017, // MongoDB - often no auth
 ]);
 
 // Format relative time

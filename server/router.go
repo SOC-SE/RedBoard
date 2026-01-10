@@ -97,6 +97,7 @@ func NewRouter() *gin.Engine {
 	router.GET("/hosts/by-team/:tid", middleware.Authorize("viewer"), host.GetHostsByTeam)
 	router.GET("/hosts/by-team/", middleware.Authorize("viewer"), host.GetAllHostsByTeam)
 	router.GET("/dashboard/data", middleware.Authorize("viewer"), host.GetDashboardData)
+	router.GET("/vulnerabilities", middleware.Authorize("viewer"), host.GetVulnerabilities)
 
 	// Swagger
 	docs.SwaggerInfo.BasePath = "/"
@@ -154,6 +155,15 @@ func NewRouter() *gin.Engine {
 			"user":  session.Get("user"),
 			"roles": session.Get("roles"),
 			"title": "Job Queue",
+		})
+	})
+
+	router.GET("/vulns.html", middleware.AuthorizeHTML("viewer"), func(c *gin.Context) {
+		session := sessions.Default(c)
+		c.HTML(http.StatusOK, "vulns.html", gin.H{
+			"user":  session.Get("user"),
+			"roles": session.Get("roles"),
+			"title": "Vulnerabilities",
 		})
 	})
 

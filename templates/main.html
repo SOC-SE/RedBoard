@@ -1,34 +1,34 @@
 {{ template "head.html" . }}
 {{ template "menu.html" . }}
 
-<main class="main-content" x-data="dashboard()" x-init="init()" x-cloak>
+<main class="main-content" id="dashboard-app">
     <!-- Stats Bar -->
     <div class="stats-bar">
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Teams</h4>
-                <div class="stat-value" x-text="stats.teams || 0">-</div>
+                <div class="stat-value" id="stat-teams">-</div>
             </div>
             <div class="stat-icon blue">📊</div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Hosts</h4>
-                <div class="stat-value" x-text="stats.hosts || 0">-</div>
+                <div class="stat-value" id="stat-hosts">-</div>
             </div>
             <div class="stat-icon green">🖥️</div>
         </div>
         <div class="stat-card">
             <div class="stat-content">
                 <h4>Open Ports</h4>
-                <div class="stat-value" x-text="stats.ports || 0">-</div>
+                <div class="stat-value" id="stat-ports">-</div>
             </div>
             <div class="stat-icon yellow">🔓</div>
         </div>
         <div class="stat-card danger">
             <div class="stat-content">
                 <h4>Dangerous Ports</h4>
-                <div class="stat-value" x-text="stats.dangerous || 0">-</div>
+                <div class="stat-value" id="stat-dangerous">-</div>
             </div>
             <div class="stat-icon red">⚠️</div>
         </div>
@@ -38,24 +38,21 @@
     <div class="flex items-center justify-between mb-4">
         <h2>Network Overview</h2>
         <div class="flex gap-2">
-            <span class="text-muted text-sm" x-show="lastUpdate">
-                Last updated: <span x-text="formatTime(lastUpdate)"></span>
-            </span>
-            <button class="btn btn-secondary btn-sm" @click="refresh()" :disabled="loading">
-                <span x-show="!loading">↻ Refresh</span>
-                <span x-show="loading" class="loading-spinner"></span>
+            <span class="text-muted text-sm" id="last-update"></span>
+            <button class="btn btn-secondary btn-sm" id="refresh-btn" onclick="refreshDashboard()">
+                ↻ Refresh
             </button>
         </div>
     </div>
 
     <!-- Loading State -->
-    <div x-show="loading && (!teams || teams.length === 0)" class="text-center" style="padding: 4rem;">
+    <div id="loading-state" class="text-center" style="padding: 4rem;">
         <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
         <p class="text-muted mt-3">Loading dashboard data...</p>
     </div>
 
     <!-- Empty State -->
-    <div x-show="!loading && (!teams || teams.length === 0)" class="empty-state">
+    <div id="empty-state" class="empty-state" style="display: none;">
         <div class="empty-state-icon">📡</div>
         <h3>No Teams Configured</h3>
         <p class="text-muted">Add teams to start monitoring network assets.</p>
@@ -65,139 +62,193 @@
     </div>
 
     <!-- Teams Grid -->
-    <div class="teams-grid" x-show="teams && teams.length > 0">
-        <template x-for="team in teams" :key="team.tid">
-            <div class="team-card">
-                <!-- Team Header -->
-                <div class="team-header">
-                    <div class="team-info">
-                        <div class="team-color" :style="'background:' + team.color"></div>
-                        <span class="team-name" x-text="team.name"></span>
-                    </div>
-                    <span class="team-range" x-text="team.iprange"></span>
-                </div>
-
-                <!-- Team Stats -->
-                <div class="team-stats">
-                    <div class="team-stat">
-                        <span class="count" x-text="team.hosts?.length || 0"></span>
-                        <span class="label">hosts</span>
-                    </div>
-                    <div class="team-stat">
-                        <span class="count" x-text="countPorts(team)"></span>
-                        <span class="label">ports</span>
-                    </div>
-                    <div class="team-stat">
-                        <span class="count" style="color: var(--accent-red);" x-text="countDangerousPorts(team)"></span>
-                        <span class="label">risky</span>
-                    </div>
-                </div>
-
-                <!-- Host List -->
-                <div class="host-list">
-                    <template x-if="!team.hosts || team.hosts.length === 0">
-                        <div class="empty-state" style="padding: 2rem;">
-                            <p class="text-muted text-sm">No hosts discovered yet</p>
-                        </div>
-                    </template>
-
-                    <template x-for="host in team.hosts" :key="host.ip">
-                        <div class="host-item">
-                            <div class="host-header">
-                                <div>
-                                    <div class="host-ip" x-text="host.ip"></div>
-                                    <div class="host-hostname" x-text="host.hostname || 'Unknown hostname'"></div>
-                                </div>
-                                <div class="host-status" :class="host.status || 'online'">
-                                    <span class="status-dot"></span>
-                                    <span x-text="host.status || 'online'"></span>
-                                </div>
-                            </div>
-                            <div class="port-grid">
-                                <template x-for="port in host.ports" :key="port.number">
-                                    <span 
-                                        class="port-badge" 
-                                        :class="{ 'dangerous': isDangerous(port.number) }"
-                                        :title="port.service || 'Unknown service'"
-                                        x-text="port.number + '/' + port.protocol"
-                                    ></span>
-                                </template>
-                                <template x-if="!host.ports || host.ports.length === 0">
-                                    <span class="text-muted text-sm">No open ports</span>
-                                </template>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </template>
-    </div>
+    <div class="teams-grid" id="teams-grid" style="display: none;"></div>
 </main>
 
 <script>
 const DANGEROUS_PORTS = new Set([21,22,23,25,53,110,135,139,143,445,1433,1521,3306,3389,5432,5900,6379,8080,27017]);
 
-function dashboard() {
-    return {
-        teams: [],
-        stats: { teams: 0, hosts: 0, ports: 0, dangerous: 0 },
-        loading: true,
-        lastUpdate: null,
-        refreshInterval: null,
+function isDangerous(port) {
+    return DANGEROUS_PORTS.has(port);
+}
 
-        async init() {
-            await this.refresh();
-            // Auto-refresh every 30 seconds
-            this.refreshInterval = setInterval(() => this.refresh(), 30000);
-        },
+function countPorts(team) {
+    if (!team.hosts) return 0;
+    return team.hosts.reduce(function(sum, host) {
+        return sum + (host.ports ? host.ports.length : 0);
+    }, 0);
+}
 
-        async refresh() {
-            this.loading = true;
-            try {
-                const data = await API.get('/dashboard/data');
-                this.teams = data.teams || [];
-                this.stats = {
-                    teams: data.total_teams || 0,
-                    hosts: data.total_hosts || 0,
-                    ports: data.total_ports || 0,
-                    dangerous: data.dangerous_ports || 0
-                };
-                this.lastUpdate = new Date();
-            } catch (err) {
-                console.error('Failed to load dashboard:', err);
-                Toast.error('Failed to refresh dashboard');
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        countPorts(team) {
-            if (!team.hosts) return 0;
-            return team.hosts.reduce((sum, host) => sum + (host.ports?.length || 0), 0);
-        },
-
-        countDangerousPorts(team) {
-            if (!team.hosts) return 0;
-            let count = 0;
-            team.hosts.forEach(host => {
-                if (host.ports) {
-                    host.ports.forEach(port => {
-                        if (DANGEROUS_PORTS.has(port.number)) count++;
-                    });
-                }
+function countDangerousPorts(team) {
+    if (!team.hosts) return 0;
+    var count = 0;
+    team.hosts.forEach(function(host) {
+        if (host.ports) {
+            host.ports.forEach(function(port) {
+                if (isDangerous(port.number)) count++;
             });
-            return count;
-        },
-
-        isDangerous(port) {
-            return DANGEROUS_PORTS.has(port);
-        },
-
-        formatTime(date) {
-            if (!date) return '';
-            return date.toLocaleTimeString();
         }
-    };
+    });
+    return count;
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString();
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function renderTeams(teams) {
+    var grid = document.getElementById('teams-grid');
+    grid.innerHTML = '';
+    
+    teams.forEach(function(team) {
+        var teamCard = document.createElement('div');
+        teamCard.className = 'team-card';
+        
+        var hostsHtml = '';
+        if (team.hosts && team.hosts.length > 0) {
+            team.hosts.forEach(function(host) {
+                var portsHtml = '';
+                if (host.ports && host.ports.length > 0) {
+                    host.ports.forEach(function(port) {
+                        var dangerClass = isDangerous(port.number) ? 'dangerous' : '';
+                        portsHtml += '<span class="port-badge ' + dangerClass + '" title="' + escapeHtml(port.service || 'Unknown') + '">' +
+                            port.number + '/' + port.protocol + '</span>';
+                    });
+                } else {
+                    portsHtml = '<span class="text-muted text-sm">No open ports</span>';
+                }
+                
+                hostsHtml += '<div class="host-item">' +
+                    '<div class="host-header">' +
+                        '<div>' +
+                            '<div class="host-ip">' + escapeHtml(host.ip) + '</div>' +
+                            '<div class="host-hostname">' + escapeHtml(host.hostname || 'Unknown hostname') + '</div>' +
+                        '</div>' +
+                        '<div class="host-status ' + (host.status || 'online') + '">' +
+                            '<span class="status-dot"></span>' +
+                            '<span>' + (host.status || 'online') + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="port-grid">' + portsHtml + '</div>' +
+                '</div>';
+            });
+        } else {
+            hostsHtml = '<div class="empty-state" style="padding: 2rem;">' +
+                '<p class="text-muted text-sm">No hosts discovered yet</p></div>';
+        }
+        
+        teamCard.innerHTML = 
+            '<div class="team-header">' +
+                '<div class="team-info">' +
+                    '<div class="team-color" style="background: ' + (team.color || '#3B82F6') + '"></div>' +
+                    '<span class="team-name">' + escapeHtml(team.name) + '</span>' +
+                '</div>' +
+                '<span class="team-range">' + escapeHtml(team.iprange) + '</span>' +
+            '</div>' +
+            '<div class="team-stats">' +
+                '<div class="team-stat">' +
+                    '<span class="count">' + (team.hosts ? team.hosts.length : 0) + '</span>' +
+                    '<span class="label">hosts</span>' +
+                '</div>' +
+                '<div class="team-stat">' +
+                    '<span class="count">' + countPorts(team) + '</span>' +
+                    '<span class="label">ports</span>' +
+                '</div>' +
+                '<div class="team-stat">' +
+                    '<span class="count" style="color: var(--accent-red);">' + countDangerousPorts(team) + '</span>' +
+                    '<span class="label">risky</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="host-list">' + hostsHtml + '</div>';
+        
+        grid.appendChild(teamCard);
+    });
+}
+
+function refreshDashboard() {
+    console.log('[Dashboard] Refreshing...');
+    
+    var loadingState = document.getElementById('loading-state');
+    var emptyState = document.getElementById('empty-state');
+    var teamsGrid = document.getElementById('teams-grid');
+    var refreshBtn = document.getElementById('refresh-btn');
+    
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<span class="loading-spinner" style="width: 14px; height: 14px;"></span>';
+    
+    fetch('/dashboard/data', {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(function(response) {
+        console.log('[Dashboard] Response status:', response.status);
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('[Dashboard] Data received:', data);
+        
+        // Update stats
+        document.getElementById('stat-teams').textContent = data.total_teams || 0;
+        document.getElementById('stat-hosts').textContent = data.total_hosts || 0;
+        document.getElementById('stat-ports').textContent = data.total_ports || 0;
+        document.getElementById('stat-dangerous').textContent = data.dangerous_ports || 0;
+        
+        // Update last update time
+        document.getElementById('last-update').textContent = 'Last updated: ' + formatTime(new Date());
+        
+        // Hide loading
+        loadingState.style.display = 'none';
+        
+        // Show teams or empty state
+        if (data.teams && data.teams.length > 0) {
+            emptyState.style.display = 'none';
+            teamsGrid.style.display = 'grid';
+            renderTeams(data.teams);
+        } else {
+            emptyState.style.display = 'block';
+            teamsGrid.style.display = 'none';
+        }
+        
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '↻ Refresh';
+    })
+    .catch(function(err) {
+        console.error('[Dashboard] Error:', err);
+        loadingState.innerHTML = 
+            '<div style="color: var(--accent-red);">' +
+                '<p>Failed to load dashboard data</p>' +
+                '<p class="text-muted text-sm">' + err.message + '</p>' +
+                '<button class="btn btn-primary mt-3" onclick="refreshDashboard()">Retry</button>' +
+            '</div>';
+        
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '↻ Refresh';
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Dashboard] Page loaded, initializing...');
+    refreshDashboard();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(refreshDashboard, 30000);
+});
+
+// Fallback: also try to init if document is already ready
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log('[Dashboard] Document already ready, initializing...');
+    setTimeout(refreshDashboard, 100);
 }
 </script>
 

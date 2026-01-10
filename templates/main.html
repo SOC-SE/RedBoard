@@ -66,7 +66,7 @@
 </main>
 
 <script>
-const DANGEROUS_PORTS = new Set([21,22,23,25,53,110,135,139,143,445,1433,1521,3306,3389,5432,5900,6379,8080,27017]);
+// Use DANGEROUS_PORTS from common.js (already defined there)
 
 function isDangerous(port) {
     return DANGEROUS_PORTS.has(port);
